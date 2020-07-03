@@ -8,7 +8,8 @@ import simulacrum._
 
 //case class NDArray[@specialized(Int, Long, Float, Double, Boolean) T](arr: ArraySeq[T])
 case class NDArray[T: IsSupported](arr: ArraySeq[T]) {
-  val size = arr.length
+  val size: Coord = arr.length
+  def get[A](i: Int): A = arr(i).asInstanceOf[A]
 }
 object NDArray {
   def apply[T: IsSupported](arr: ArraySeq[T]) =
@@ -29,6 +30,9 @@ case class ArraySeqBackedDF(
 @typeclass trait DataFrame[DFImpl] {
   import DataFrame._
 
+  def data(df: DFImpl): Seq[NDArray[_]]
+  def index(df: DFImpl): Seq[String]
+  def columns(df: DFImpl): Seq[String]
   def head(df: DFImpl, n: Int = 5): DFImpl
   def at[A](df: DFImpl, rowIdx: Label, colIdx: Label): Option[A]
   def iat[A](df: DFImpl, i: Coord, j: Coord): Option[A]
@@ -36,18 +40,25 @@ case class ArraySeqBackedDF(
   def loc[I: ClassTag: IsIndex](df: DFImpl, index: Seq[I]): DFImpl
   def shape(df: DFImpl): (Int, Int)
   def size(df: DFImpl): Int
+  def to[A](df: DFImpl)(implicit E: Encoder[DFImpl, A]): Seq[A] = E.encode(df)
 }
 
 object DataFrame {
 
   import DataFrame.ops._
-  implicit def arraySeqDF = new DataFrame[ArraySeqBackedDF] {
+  implicit val arraySeqDF: DataFrame[ArraySeqBackedDF] = new DataFrame[ArraySeqBackedDF] {
 
-    val nullArraySeqDF = ArraySeqBackedDF(
+    val nullArraySeqDF: ArraySeqBackedDF = ArraySeqBackedDF(
       ArraySeq.empty[NDArray[Int]],
       ArraySeq.empty[String],
       ArraySeq.empty[String]
     )
+
+    override def data(df: ArraySeqBackedDF): Seq[NDArray[_]] = df.data
+
+    override def index(df: ArraySeqBackedDF): Seq[String] = df.index
+
+    override def columns(df: ArraySeqBackedDF): Seq[String] = df.columns
 
     override def head(
         df: ArraySeqBackedDF,
@@ -131,6 +142,7 @@ object DataFrame {
 
     override def size(df: ArraySeqBackedDF): Int =
       (df.data.length * df.data(0).size)
+
   }
 
 }

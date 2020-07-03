@@ -4,8 +4,31 @@ import scala.collection.immutable.ArraySeq
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import scala.collection.mutable.ListBuffer
 
 class ArraySeqBackedDFSpec extends AnyFlatSpec with Matchers {
+
+  case class Serpent(name: String, speed: Int, stamina: Int)
+
+  implicit val arraySeqDFEncoder = new Encoder[ArraySeqBackedDF, Serpent] {
+
+  import DataFrame.ops._
+
+    override def encode(df: ArraySeqBackedDF): Seq[Serpent] = {
+      var collector = new ListBuffer[Serpent]()
+      for (i <- 1 to df.data.length) {
+        val index = i - 1
+        val name = if (df.index.indices.contains(index)) df.index(index) else index.toString
+        val ndarr = df.data(index)
+        collector += Serpent(
+          name,
+          ndarr.get[Int](0),
+          ndarr.get[Int](1))
+      }
+      collector.toSeq
+    }
+
+  }
 
   val data = ArraySeq(
     NDArray(1, 2),
@@ -36,6 +59,24 @@ class ArraySeqBackedDFSpec extends AnyFlatSpec with Matchers {
     ArraySeq.empty[NDArray[Int]],
     ArraySeq.empty[String],
     ArraySeq.empty[String]
+  )
+
+  val serpents = ArraySeq(
+    Serpent("viper", 1, 2),
+    Serpent("sidewinder", 4, 5),
+    Serpent("cobra", 7, 8),
+    Serpent("python", 10, 11),
+    Serpent("anaconda", 13, 14),
+    Serpent("yellowbeard", 16, 17)
+  )
+
+  val serpentsNoIndex = ArraySeq(
+    Serpent("0", 1, 2),
+    Serpent("1", 4, 5),
+    Serpent("2", 7, 8),
+    Serpent("3", 10, 11),
+    Serpent("4", 13, 14),
+    Serpent("5", 16, 17)
   )
 
   "Size" should "equal 12" in {
@@ -143,5 +184,21 @@ class ArraySeqBackedDFSpec extends AnyFlatSpec with Matchers {
   "loc(true, true, true, true, true, true)" should "be the original dataframe" in {
     DataFrame[ArraySeqBackedDF]
       .loc(df, Seq(true, true, true, true, true, true)) shouldBe df
+  }
+
+  "Encoder" should "encode DataFrame" in {
+    arraySeqDFEncoder.encode(df) shouldBe serpents
+  }
+
+  "Encoder" should "encode DataFrame with no index" in {
+    arraySeqDFEncoder.encode(dfNoIndex) shouldBe serpentsNoIndex
+  }
+
+  "to" should "encode DataFrame" in {
+    DataFrame[ArraySeqBackedDF].to(df) shouldBe serpents
+  }
+
+  "to" should "encode DataFrame with no index" in {
+    DataFrame[ArraySeqBackedDF].to(dfNoIndex) shouldBe serpentsNoIndex
   }
 }
