@@ -17,6 +17,15 @@ lazy val core = (project in file("core"))
     libraryDependencies += scalaTest % Test
   )
 
+lazy val arrowDF = (project in file("arrow"))
+  .dependsOn(core)
+  .settings(
+    name := "simpledf-arrow",
+    libraryDependencies += "org.typelevel" %% "spire" % "0.17.0-M1",
+    libraryDependencies += "org.apache.arrow" % "arrow-vector" % "0.17.1",
+    libraryDependencies += scalaTest % Test
+  )
+
 scalacOptions ++= Seq(
   "-feature",
   "-deprecation",

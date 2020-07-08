@@ -22,8 +22,9 @@ class ArraySeqBackedDFSpec extends AnyFlatSpec with Matchers {
         val ndarr = df.data(index)
         collector += Serpent(
           name,
-          ndarr.get[Int](0),
-          ndarr.get[Int](1))
+          ndarr(0).asInstanceOf[Int],
+          ndarr(1).asInstanceOf[Int]
+        )
       }
       collector.toSeq
     }
@@ -31,12 +32,12 @@ class ArraySeqBackedDFSpec extends AnyFlatSpec with Matchers {
   }
 
   val data = ArraySeq(
-    NDArray(1, 2),
-    NDArray(4, 5),
-    NDArray(7, 8),
-    NDArray(10, 11),
-    NDArray(13, 14),
-    NDArray(16, 17)
+    ArraySeq(1, 2),
+    ArraySeq(4, 5),
+    ArraySeq(7, 8),
+    ArraySeq(10, 11),
+    ArraySeq(13, 14),
+    ArraySeq(16, 17)
   )
   val index = ArraySeq(
     "viper",
@@ -51,12 +52,12 @@ class ArraySeqBackedDFSpec extends AnyFlatSpec with Matchers {
   val dfNoIndex = ArraySeqBackedDF(data, ArraySeq.empty[String], cols)
   val dfNoCols = ArraySeqBackedDF(data, index, ArraySeq.empty[String])
   val dfOnlyCols = ArraySeqBackedDF(
-    ArraySeq.empty[NDArray[Int]],
+    ArraySeq.empty[ArraySeq[Int]],
     ArraySeq.empty[String],
     cols
   )
   val nullArraySeqDF = ArraySeqBackedDF(
-    ArraySeq.empty[NDArray[Int]],
+    ArraySeq.empty[ArraySeq[Int]],
     ArraySeq.empty[String],
     ArraySeq.empty[String]
   )
@@ -141,7 +142,7 @@ class ArraySeqBackedDFSpec extends AnyFlatSpec with Matchers {
 
   "loc('viper')" should "return df's first row" in {
     val row = DataFrame[ArraySeqBackedDF].loc(df, "viper") shouldBe
-      ArraySeqBackedDF(ArraySeq(NDArray(1, 2)), ArraySeq("viper"), cols)
+      ArraySeqBackedDF(ArraySeq(ArraySeq(1, 2)), ArraySeq("viper"), cols)
   }
 
   "loc('venom')" should "return 'null' dataframe" in {
@@ -151,7 +152,7 @@ class ArraySeqBackedDFSpec extends AnyFlatSpec with Matchers {
   "loc('viper', 'python')" should "return first and fourth rows" in {
     DataFrame[ArraySeqBackedDF].loc(df, Seq("viper", "python")) shouldBe
       ArraySeqBackedDF(
-        ArraySeq(NDArray(1, 2), NDArray(10, 11)),
+        ArraySeq(ArraySeq(1, 2), ArraySeq(10, 11)),
         ArraySeq("viper", "python"),
         cols
       )
@@ -160,7 +161,7 @@ class ArraySeqBackedDFSpec extends AnyFlatSpec with Matchers {
   "loc('viper', 'venom')" should "return a dataframe with only 'viper' elements" in {
     DataFrame[ArraySeqBackedDF].loc(df, Seq("viper", "venom")) shouldBe
       ArraySeqBackedDF(
-        ArraySeq(NDArray(1, 2)),
+        ArraySeq(ArraySeq(1, 2)),
         ArraySeq("viper"),
         cols
       )
@@ -170,7 +171,7 @@ class ArraySeqBackedDFSpec extends AnyFlatSpec with Matchers {
     DataFrame[ArraySeqBackedDF]
       .loc(df, Seq(true, false, false, true, false, false)) shouldBe
       ArraySeqBackedDF(
-        ArraySeq(NDArray(1, 2), NDArray(10, 11)),
+        ArraySeq(ArraySeq(1, 2), ArraySeq(10, 11)),
         ArraySeq("viper", "python"),
         cols
       )

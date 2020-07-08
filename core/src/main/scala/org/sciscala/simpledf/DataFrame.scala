@@ -6,31 +6,17 @@ import scala.reflect.{classTag, ClassTag}
 import spire.math.Numeric
 import simulacrum._
 
-//case class NDArray[@specialized(Int, Long, Float, Double, Boolean) T](arr: ArraySeq[T])
-case class NDArray[T: IsSupported](arr: ArraySeq[T]) {
-  val size: Coord = arr.length
-  def get[A](i: Int): A = arr(i).asInstanceOf[A]
-}
-object NDArray {
-  def apply[T: IsSupported](arr: ArraySeq[T]) =
-    new NDArray[T](arr)
-
-  def apply[T: ClassTag: IsSupported](values: T*) =
-    new NDArray[T](ArraySeq(values: _*))
-}
-
 case class ArraySeqBackedDF(
-    data: ArraySeq[NDArray[_]],
+    data: ArraySeq[ArraySeq[_]],
     index: ArraySeq[String],
     columns: ArraySeq[String]
 ) {
-  def shape: (Int, Int) = (this.data.length, this.data(0).size)
+  val shape: (Int, Int) = (this.data.length, if (this.data.length > 0) this.data(0).size else 0)
 }
 
 @typeclass trait DataFrame[DFImpl] {
-  import DataFrame._
 
-  def data(df: DFImpl): Seq[NDArray[_]]
+  def data(df: DFImpl): Seq[Seq[_]]
   def index(df: DFImpl): Seq[String]
   def columns(df: DFImpl): Seq[String]
   def head(df: DFImpl, n: Int = 5): DFImpl
@@ -45,16 +31,15 @@ case class ArraySeqBackedDF(
 
 object DataFrame {
 
-  import DataFrame.ops._
   implicit val arraySeqDF: DataFrame[ArraySeqBackedDF] = new DataFrame[ArraySeqBackedDF] {
 
     val nullArraySeqDF: ArraySeqBackedDF = ArraySeqBackedDF(
-      ArraySeq.empty[NDArray[Int]],
+      ArraySeq.empty[ArraySeq[Int]],
       ArraySeq.empty[String],
       ArraySeq.empty[String]
     )
 
-    override def data(df: ArraySeqBackedDF): Seq[NDArray[_]] = df.data
+    override def data(df: ArraySeqBackedDF): Seq[Seq[_]] = df.data
 
     override def index(df: ArraySeqBackedDF): Seq[String] = df.index
 
@@ -76,20 +61,20 @@ object DataFrame {
       else {
         val col = df.columns.indexOf(colIdx)
         if (col == -1) None
-        else Some(df.data(row).arr(col).asInstanceOf[A])
+        else Some(df.data(row)(col).asInstanceOf[A])
       }
     }
 
     override def iat[A](df: ArraySeqBackedDF, i: Coord, j: Coord): Option[A] =
       (i, j) match {
         case (i1, j1) if (i1 < 0 && j1 < 0) =>
-          Some(df.data(df.shape._1 + i).arr(df.shape._2 + j).asInstanceOf[A])
+          Some(df.data(df.shape._1 + i)(df.shape._2 + j).asInstanceOf[A])
         case (i1, j1) if (i1 < 0 && j1 <= df.shape._2) =>
-          Some(df.data(df.shape._1 + i).arr(j).asInstanceOf[A])
+          Some(df.data(df.shape._1 + i)(j).asInstanceOf[A])
         case (i1, j1) if (i1 < df.shape._1 && j1 < 0) =>
-          Some(df.data(i).arr(df.shape._2 + j).asInstanceOf[A])
+          Some(df.data(i)(df.shape._2 + j).asInstanceOf[A])
         case (i1, j1) if (i1 <= df.shape._1 && j1 <= df.shape._2) =>
-          Some(df.data(i).arr(j).asInstanceOf[A])
+          Some(df.data(i)(j).asInstanceOf[A])
         case (_, _) => None
       }
 
@@ -115,7 +100,7 @@ object DataFrame {
       tag match {
         case "java.lang.String" => {
           val (rows, idxs) = index.foldLeft(
-            (ArraySeq.empty[NDArray[_]], ArraySeq.empty[String])
+            (ArraySeq.empty[ArraySeq[_]], ArraySeq.empty[String])
           )((acc, cur) => {
             val rowIdx: Int = df.index.indexOf(cur)
             if (rowIdx == -1) acc
@@ -126,7 +111,7 @@ object DataFrame {
         case "boolean" => {
           val filteredIdx = index.zip(df.index).collect{ case b: (Boolean, String) if (b._1) => b._2}
           val (rows, idxs) = filteredIdx.foldLeft(
-            (ArraySeq.empty[NDArray[_]], ArraySeq.empty[String])
+            (ArraySeq.empty[ArraySeq[_]], ArraySeq.empty[String])
           )((acc, cur) => {
             val rowIdx: Int = df.index.indexOf(cur)
             if (rowIdx == -1) acc
