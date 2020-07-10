@@ -141,12 +141,12 @@ class ArraySeqBackedDFSpec extends AnyFlatSpec with Matchers {
   }
 
   "loc('viper')" should "return df's first row" in {
-    val row = DataFrame[ArraySeqBackedDF].loc(df, "viper") shouldBe
+    DataFrame[ArraySeqBackedDF].loc(df, "viper") shouldBe
       ArraySeqBackedDF(ArraySeq(ArraySeq(1, 2)), ArraySeq("viper"), cols)
   }
 
   "loc('venom')" should "return 'null' dataframe" in {
-    val row = DataFrame[ArraySeqBackedDF].loc(df, "venom") shouldBe nullArraySeqDF
+    DataFrame[ArraySeqBackedDF].loc(df, "venom") shouldBe nullArraySeqDF
   }
 
   "loc('viper', 'python')" should "return first and fourth rows" in {

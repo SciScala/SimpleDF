@@ -18,7 +18,7 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
 
   case class Serpent(name: String, speed: Int, stamina: Int)
 
-  implicit val schemaRootDataFrame = new Equality[VectorSchemaRoot] {
+  implicit val schemaRootDataFrame: Equality[VectorSchemaRoot] = new Equality[VectorSchemaRoot] {
     override def areEqual(a: VectorSchemaRoot, b: Any): Boolean = 
       b match {
         case root: VectorSchemaRoot =>
@@ -32,10 +32,8 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
   val staminaField = new Field("stamina", intType, null)
   val schemaFields = List(speedField, staminaField)
   val schema: Schema = new Schema(schemaFields.asJava)
-  val data = VectorSchemaRoot.create(schema, new RootAllocator())
-  data.allocateNew()
 
-  /*private def vectorizeSerpent(
+  private def vectorizeSerpent(
       idx: Int,
       serpent: Serpent,
       schemaRoot: VectorSchemaRoot
@@ -48,9 +46,23 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
       .getVector("stamina")
       .asInstanceOf[UInt4Vector]
       .setSafe(idx, serpent.stamina)
-  }*/
+  }
 
-  private def initData(): Unit = {
+  private def serpents2DF(serpents: Seq[Serpent], schemaRoot: VectorSchemaRoot): ArrowDataFrame = {
+    val index = serpents
+      .zipWithIndex
+      .map(t => {
+        vectorizeSerpent(t._2, t._1, schemaRoot)
+        t._1.name
+      })
+    schemaRoot.setRowCount(serpents.length)
+
+    ArrowDataFrame(schemaRoot, ArraySeq.from(index))
+  }
+
+  private def initData(data: VectorSchemaRoot): Unit = {
+    data.clear()
+    data.allocateNew()
     val speedVector: UInt4Vector = data.getVector("speed").asInstanceOf[UInt4Vector]
     speedVector.allocateNew()
     speedVector.setSafe(0, 1) // setSafe checks we don't exceed initialCapacity
@@ -71,9 +83,10 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     staminaVector.setSafe(4, 14)
     staminaVector.setSafe(5, 17)
     staminaVector.setValueCount(6)
+    data.setRowCount(6)
   }
 
-  val index = ArraySeq(
+  val index: Seq[String] = ArraySeq(
     "viper",
     "sidewinder",
     "cobra",
@@ -82,9 +95,9 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     "yellowbeard"
   )
 
-  val cols = ArraySeq.from(schema.getFields().asScala.map(f => f.getName()))
+  val cols: Seq[String] = ArraySeq.from(schema.getFields.asScala.map(f => f.getName))
 
-  val serpents = ArraySeq(
+  val serpents: Seq[Any] = ArraySeq(
     Serpent("viper", 1, 2),
     Serpent("sidewinder", 4, 5),
     Serpent("cobra", 7, 8),
@@ -94,22 +107,11 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
   )
 
   //serpents.zipWithIndex.foreach(t => vectorizeSerpent(t._2, t._1, data))
-  data.setRowCount(6)
+  val data: VectorSchemaRoot = VectorSchemaRoot.create(schema, new RootAllocator())
+  initData(data)
+  val df = ArrowDataFrame(data, index)
 
-  val df = ArrowDataFrame(data, index, cols)
-
-  val dfNoIndex = ArrowDataFrame(data, ArraySeq.empty[String], cols)
-  val dfNoCols = ArrowDataFrame(data, index, ArraySeq.empty[String])
-  val dfOnlyCols = ArrowDataFrame(
-    VectorSchemaRoot.of(Array.empty[FieldVector]: _*),
-    ArraySeq.empty[String],
-    cols
-  )
-  val nullArraySeqDF = ArrowDataFrame(
-    VectorSchemaRoot.of(Array.empty[FieldVector]: _*),
-    ArraySeq.empty[String],
-    ArraySeq.empty[String]
-  )
+  val dfNoIndex = ArrowDataFrame(data, ArraySeq.empty[String])
 
   val serpentsNoIndex = ArraySeq(
     Serpent("0", 1, 2),
@@ -119,8 +121,6 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     Serpent("4", 13, 14),
     Serpent("5", 16, 17)
   )
-
-  initData()
 
   "Size" should "equal 12" in {
     DataFrame[ArrowDataFrame].size(df) shouldEqual 12
@@ -151,14 +151,83 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     d.columns shouldBe cols.take(5)
   }
 
-  "Head of dfNoCols" should "return a Dataframe with the first 5 rows and a empty column names" in {
-    val d = DataFrame[ArrowDataFrame].head(dfNoCols)
-    d.data shouldEqual data.slice(0, 5)
-    d.index shouldBe index.take(5)
-    d.columns shouldBe ArraySeq()
-  }
-
   "iat(2,1)" should "equal 8" in {
     DataFrame[ArrowDataFrame].iat(df, 2, 1) shouldBe Some(8)
+  }
+
+  "iat(-2,1)" should "equal 14" in {
+    DataFrame[ArrowDataFrame].iat(df, -2, 1) shouldBe Some(14)
+  }
+
+  "iat(2,-1)" should "equal 7" in {
+    DataFrame[ArrowDataFrame].iat(df, 2, -1) shouldBe Some(8)
+  }
+
+  "iat(-2,-1)" should "equal 13" in {
+    DataFrame[ArrowDataFrame].iat(df, -2, -2) shouldBe Some(13)
+  }
+
+  "at('viper', 'stamina')" should "equal 2" in {
+    DataFrame[ArrowDataFrame].at(df, "viper", "stamina") shouldBe Some(2)
+  }
+
+  "at('viper', 'venom')" should "be None" in {
+    DataFrame[ArrowDataFrame].at(df, "viper", "venom") shouldBe None
+  }
+
+  "loc('viper')" should "return df's first row" in {
+    data.clear()
+    data.allocateNew()
+    val expected = serpents2DF(Seq(Serpent("viper", 1, 2)), data)
+    DataFrame[ArrowDataFrame].loc(df, "viper") shouldBe expected
+  }
+
+  "loc('venom')" should "return 'null' dataframe" in {
+    DataFrame[ArrowDataFrame].loc(df, "venom") shouldEqual nullArrowDF
+  }
+
+  "loc('viper', 'python')" should "return first and fourth rows" in {
+    val cleanVSR: VectorSchemaRoot = VectorSchemaRoot.create(schema, new RootAllocator())
+    val expected = serpents2DF(Seq(Serpent("viper", 1, 2), Serpent("python", 10, 11)), cleanVSR)
+    initData(data)
+    val wholeSet = ArrowDataFrame(data, index)
+    val res = DataFrame[ArrowDataFrame].loc(wholeSet, Seq("viper", "python"))
+    res.data shouldEqual expected.data
+    res.index shouldBe expected.index
+  }
+
+  "loc('viper', 'venom')" should "return a dataframe with only 'viper' elements" in {
+    data.clear()
+    data.allocateNew()
+    val df = serpents2DF(Seq(Serpent("viper", 1, 2)), data)
+    val res = DataFrame[ArrowDataFrame].loc(df, Seq("viper", "venom"))
+    res.data shouldEqual df.data
+    res.index shouldBe df.index
+  }
+
+  "loc(true, false, false, true, false, false)" should "return first and fourth rows" in {
+    val cleanVSR: VectorSchemaRoot = VectorSchemaRoot.create(schema, new RootAllocator())
+    val expected = serpents2DF(Seq(Serpent("viper", 1, 2), Serpent("python", 10, 11)), cleanVSR)
+    initData(data)
+    val wholeSet = ArrowDataFrame(data, index)
+    val res = DataFrame[ArrowDataFrame].loc(wholeSet, Seq(true, false, false, true, false, false))
+    res.data shouldEqual expected.data
+    res.index shouldBe expected.index
+  }
+
+  "loc(false, false, false, false, false, false)" should "return a dataframe with no rows and only colNames" in {
+    initData(data)
+    val wholeSet = ArrowDataFrame(data, index)
+    val res = DataFrame[ArrowDataFrame].loc(wholeSet, Seq(false, false, false, false, false, false))
+    res.data.getRowCount shouldEqual 0
+    res.index.size shouldBe 0
+  }
+
+  "loc(true, true, true, true, true, true)" should "be the original dataframe" in {
+    initData(data)
+    val wholeSet = ArrowDataFrame(data, index)
+    val res = DataFrame[ArrowDataFrame].loc(wholeSet, Seq(true, true, true, true, true, true))
+    res.data shouldEqual df.data
+    res.index shouldBe df.index
   }
 }

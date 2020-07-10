@@ -69,11 +69,11 @@ object DataFrame {
       (i, j) match {
         case (i1, j1) if (i1 < 0 && j1 < 0) =>
           Some(df.data(df.shape._1 + i)(df.shape._2 + j).asInstanceOf[A])
-        case (i1, j1) if (i1 < 0 && j1 <= df.shape._2) =>
+        case (i1, j1) if (i1 < 0 && j1 < df.shape._2) =>
           Some(df.data(df.shape._1 + i)(j).asInstanceOf[A])
         case (i1, j1) if (i1 < df.shape._1 && j1 < 0) =>
           Some(df.data(i)(df.shape._2 + j).asInstanceOf[A])
-        case (i1, j1) if (i1 <= df.shape._1 && j1 <= df.shape._2) =>
+        case (i1, j1) if (i1 < df.shape._1 && j1 < df.shape._2) =>
           Some(df.data(i)(j).asInstanceOf[A])
         case (_, _) => None
       }
@@ -96,7 +96,6 @@ object DataFrame {
         index: Seq[I]
     ): ArraySeqBackedDF = {
       val tag = classTag[I].runtimeClass.getName
-      println(tag)
       tag match {
         case "java.lang.String" => {
           val (rows, idxs) = index.foldLeft(
@@ -115,7 +114,7 @@ object DataFrame {
           )((acc, cur) => {
             val rowIdx: Int = df.index.indexOf(cur)
             if (rowIdx == -1) acc
-            else (acc._1 :+ df.data(rowIdx), acc._2 :+ cur.asInstanceOf[String])
+            else (acc._1 :+ df.data(rowIdx), acc._2 :+ cur)
           })
           ArraySeqBackedDF(rows, idxs, df.columns)
         }
