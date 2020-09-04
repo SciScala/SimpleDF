@@ -5,7 +5,6 @@ import org.apache.arrow.vector.types.pojo.Schema
 import org.apache.arrow.vector.{FieldVector, VectorSchemaRoot}
 
 import scala.collection.immutable.ArraySeq
-import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.reflect.{ClassTag, classTag}
 
@@ -35,7 +34,7 @@ object arrow {
 
   implicit val arrowDF: DataFrame[ArrowDataFrame] = new DataFrame[ArrowDataFrame] {
 
-    override def data(df: ArrowDataFrame): Seq[Seq[_]] = {
+    override def data(df: ArrowDataFrame): Seq[Column[_]] = {
       val fvs: java.util.List[FieldVector] = df.data.getFieldVectors
       val fvSeq: Seq[FieldVector] = fvs.toArray(Array.empty[FieldVector]).toSeq
       fvSeq.map(_.asScala.toSeq)
@@ -48,6 +47,12 @@ object arrow {
     override def head(df: ArrowDataFrame, n: Int = 5): ArrowDataFrame = {
       val d = df.data.slice(0, n)
       ArrowDataFrame(d, df.index.take(n))
+    }
+
+    override def tail(df: ArrowDataFrame, n: Int = 5): ArrowDataFrame = {
+      val size = df.data.getRowCount
+      val d = df.data.slice(size - n, size)
+      ArrowDataFrame(d, df.index.takeRight(n))
     }
 
     override def at[A](df: ArrowDataFrame, rowIdx: Label, colIdx: Label): Option[A] = {
@@ -107,6 +112,8 @@ object arrow {
         }
       }
     }
+
+    override def insert(df: ArrowDataFrame, loc: Coord, col: Label, value: Column[_], allow_duplicates: Boolean): Either[Error, ArrowDataFrame] = ???
 
     override def shape(df: ArrowDataFrame): (Int, Int) =
       df.shape

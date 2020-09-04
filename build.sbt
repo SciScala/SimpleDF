@@ -17,10 +17,12 @@ lazy val core = (project in file("core"))
     libraryDependencies += scalaTest % Test
   )
 
-lazy val arrowDF = (project in file("arrow"))
+lazy val arrow = (project in file("arrow"))
   .dependsOn(core)
   .settings(
     name := "simpledf-arrow",
+    scalacOptions += "-Ymacro-annotations",
+    libraryDependencies += simulacrum, //TODO: Move to simulacrum-scalafix
     libraryDependencies += "org.typelevel" %% "spire" % "0.17.0-M1",
     libraryDependencies += "org.apache.arrow" % "arrow-vector" % "0.17.1",
     libraryDependencies += scalaTest % Test

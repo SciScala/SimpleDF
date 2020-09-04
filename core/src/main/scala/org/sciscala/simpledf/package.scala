@@ -1,8 +1,8 @@
 package org.sciscala
 
-package object simpledf {
+import scala.collection.immutable.ArraySeq
 
-  import scala.collection.immutable.ArraySeq
+package object simpledf {
 
   type ![A]  = A => Nothing
   type !![A] = ![![A]]
@@ -26,4 +26,5 @@ package object simpledf {
 
   type Label = String
   type Coord = Int
+  type Column[+A] = Seq[A]
 }

@@ -4,19 +4,44 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.apache.arrow.vector.{FieldVector, UInt4Vector, VectorSchemaRoot}
 import org.apache.arrow.memory.RootAllocator
+import org.apache.arrow.vector.complex.reader.FieldReader
 import org.apache.arrow.vector.types.pojo.Schema
 import org.apache.arrow.vector.types.pojo.Field
 import org.apache.arrow.vector.types.pojo.FieldType
 import org.apache.arrow.vector.types.pojo.ArrowType
 
 import scala.collection.immutable.ArraySeq
+import scala.collection.mutable.{Seq => MSeq}
 import scala.jdk.CollectionConverters._
 import org.sciscala.simpledf.arrow._
 import org.scalactic.Equality
 
+import scala.collection.mutable.ListBuffer
+
+import DataFrame.ops._
+
 class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
 
   case class Serpent(name: String, speed: Int, stamina: Int)
+
+  implicit val arrowDFEncoder = new Encoder[ArrowDataFrame, Serpent] {
+
+    override def encode(df: ArrowDataFrame): Seq[Serpent] = {
+      var collector = new ListBuffer[Serpent]()
+      val fvs: MSeq[FieldReader] = df.data.getFieldVectors.asScala.map(fv => fv.getReader)
+      for (i <- 1 to df.data.getRowCount) {
+        val index = i - 1
+        val name = if (df.index.indices.contains(index)) df.index(index) else index.toString
+        collector += Serpent(
+          name,
+          {fvs(0).setPosition(index); fvs(0).readInteger()},
+          {fvs(1).setPosition(index); fvs(1).readInteger()}
+        )
+      }
+      collector.toSeq
+    }
+
+  }
 
   implicit val schemaRootDataFrame: Equality[VectorSchemaRoot] = new Equality[VectorSchemaRoot] {
     override def areEqual(a: VectorSchemaRoot, b: Any): Boolean = 
@@ -97,7 +122,7 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
 
   val cols: Seq[String] = ArraySeq.from(schema.getFields.asScala.map(f => f.getName))
 
-  val serpents: Seq[Any] = ArraySeq(
+  val serpents: Seq[Any] = List(
     Serpent("viper", 1, 2),
     Serpent("sidewinder", 4, 5),
     Serpent("cobra", 7, 8),
@@ -113,7 +138,7 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
 
   val dfNoIndex = ArrowDataFrame(data, ArraySeq.empty[String])
 
-  val serpentsNoIndex = ArraySeq(
+  val serpentsNoIndex = List(
     Serpent("0", 1, 2),
     Serpent("1", 4, 5),
     Serpent("2", 7, 8),
@@ -192,6 +217,7 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     initData(data)
     val wholeSet = ArrowDataFrame(data, index)
     val res = DataFrame[ArrowDataFrame].loc(wholeSet, Seq("viper", "python"))
+    println(expected.data.toString())
     res.data shouldEqual expected.data
     res.index shouldBe expected.index
   }
@@ -229,5 +255,25 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     val res = DataFrame[ArrowDataFrame].loc(wholeSet, Seq(true, true, true, true, true, true))
     res.data shouldEqual df.data
     res.index shouldBe df.index
+  }
+
+  initData(data)
+  val wholeSet = ArrowDataFrame(data, index)
+
+  "Encoder" should "encode DataFrame" in {
+    val res = arrowDFEncoder.encode(wholeSet)
+    res shouldBe serpents
+  }
+
+  "Encoder" should "encode DataFrame with no index" in {
+    arrowDFEncoder.encode(dfNoIndex) shouldBe serpentsNoIndex
+  }
+
+  "to" should "encode DataFrame" in {
+    DataFrame[ArrowDataFrame].to(wholeSet) shouldBe serpents
+  }
+
+  "to" should "encode DataFrame with no index" in {
+    DataFrame[ArrowDataFrame].to(dfNoIndex) shouldBe serpentsNoIndex
   }
 }
