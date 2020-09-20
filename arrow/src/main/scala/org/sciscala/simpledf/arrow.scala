@@ -121,6 +121,7 @@ object arrow {
     override def size(df: ArrowDataFrame): Int =
       df.size
 
+    override def empty(df: ArrowDataFrame): Boolean = df.data.getRowCount() == 0
   }
 
   // TODO take into account field children

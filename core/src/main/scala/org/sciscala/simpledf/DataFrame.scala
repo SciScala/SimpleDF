@@ -42,6 +42,7 @@ final case class InsertError(message: String) extends Error
       value: Column[_],
       allow_duplicates: Boolean
   ): Either[Error, DFImpl]
+  def empty(df: DFImpl): Boolean 
 }
 
 object DataFrame {
@@ -199,6 +200,7 @@ object DataFrame {
           )
         }
       }
+      override def empty(df: ArraySeqDataFrame): Boolean = df.data.isEmpty
     }
 
 }
