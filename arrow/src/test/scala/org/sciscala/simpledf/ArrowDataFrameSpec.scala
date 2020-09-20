@@ -276,4 +276,12 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
   "to" should "encode DataFrame with no index" in {
     DataFrame[ArrowDataFrame].to(dfNoIndex) shouldBe serpentsNoIndex
   }
+
+  "empty" should "return true if dataframe is empty" in {
+    DataFrame[ArrowDataFrame].empty(nullArrowDF) shouldBe true
+  }
+
+  "empty" should "return false if dataframe is not empty" in {
+    DataFrame[ArrowDataFrame].empty(df) shouldBe false
+  }
 }
