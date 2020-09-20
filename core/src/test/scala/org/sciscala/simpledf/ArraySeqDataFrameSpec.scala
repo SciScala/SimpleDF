@@ -203,7 +203,7 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
 
   "insert" should "adds a column at index `loc`" in {
     val newCol = ArraySeq(13,15,17,19,11,20)
-    val newDF = DataFrame[ArraySeqDataFrame].insert(df, 1, "sight", newCol, false).getOrElse(nullArraySeqDF)
+    val newDF = DataFrame[ArraySeqDataFrame].insert[Column[Int]](df, 1, "sight", newCol, false).getOrElse(nullArraySeqDF)
     newDF.data(1) shouldBe newCol
    }
 }

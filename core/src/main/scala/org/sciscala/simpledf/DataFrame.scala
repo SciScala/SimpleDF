@@ -35,11 +35,11 @@ final case class InsertError(message: String) extends Error
   def size(df: DFImpl): Int
   def to[A](df: DFImpl)(implicit E: Encoder[DFImpl, A]): Seq[A] =
     E.encode(df)
-  def insert(
+  def insert[A](
       df: DFImpl,
       loc: Int,
       col: Label,
-      value: Column[_],
+      value: A,
       allow_duplicates: Boolean
   ): Either[Error, DFImpl]
 }
@@ -153,12 +153,14 @@ object DataFrame {
                 case b: (Boolean, String) if (b._1) => b._2
               }
               .map(df.index.indexOf(_))
-            val cols = if (filteredIdx.isEmpty) ArraySeq(ArraySeq())
-            else df.data.map(
-              _.zipWithIndex
-                .filter(tup => filteredIdx.contains(tup._2))
-                .map(_._1)
-            )
+            val cols =
+              if (filteredIdx.isEmpty) ArraySeq(ArraySeq())
+              else
+                df.data.map(
+                  _.zipWithIndex
+                    .filter(tup => filteredIdx.contains(tup._2))
+                    .map(_._1)
+                )
             val idxs = df.index.zipWithIndex.foldLeft(ArraySeq.empty[String])(
               (acc, cur) => {
                 if (filteredIdx.contains(cur._2))
@@ -178,13 +180,13 @@ object DataFrame {
       override def size(df: ArraySeqDataFrame): Int =
         (df.data.length * df.data(0).size)
 
-      override def insert(
+      override def insert[A](
           df: ArraySeqDataFrame,
           loc: Coord,
           col: Label,
-          value: Column[_],
+          value: A,
           allow_duplicates: Boolean
-      ): Either[Error, ArraySeqDataFrame] = {
+      ): Either[Error, ArraySeqDataFrame] =
         if (loc < 0) {
           Left(InsertError("Column index must be 0 or greater"))
         } else if (loc > df.data.size) {
@@ -192,13 +194,12 @@ object DataFrame {
         } else {
           val (h, t) = df.data.splitAt(loc)
           val (hc, tc) = df.columns.splitAt(loc)
-          val n = (h :+ value) ++ t
+          val n = (h :+ value.asInstanceOf[Column[_]]) ++ t
           val c = (hc :+ col) ++ tc
           Right(
             ArraySeqDataFrame(n, df.index, c)
           )
         }
-      }
     }
 
 }
