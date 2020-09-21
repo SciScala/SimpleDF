@@ -42,6 +42,7 @@ object arrow {
         fvSeq.map(_.asScala.toSeq)
       }
 
+
       override def index(df: ArrowDataFrame): Seq[String] = df.index
 
       override def columns(df: ArrowDataFrame): Seq[String] = df.columns
@@ -156,6 +157,7 @@ object arrow {
 
     override def empty(df: ArrowDataFrame): Boolean = df.data.getRowCount() == 0
   }
+
 
   // TODO take into account field children
   private def copyVectorsByIndex[I: ClassTag: IsIndex](

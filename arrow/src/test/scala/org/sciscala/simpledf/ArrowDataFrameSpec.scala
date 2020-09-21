@@ -97,7 +97,6 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     data.allocateNew()
     val speedVector: UInt4Vector =
       data.getVector("speed").asInstanceOf[UInt4Vector]
-    println(s"speed: $speedVector")
     speedVector.allocateNew()
     speedVector.setSafe(0, 1) // setSafe checks we don't exceed initialCapacity
     speedVector.setSafe(1, 4)
@@ -311,12 +310,15 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
   }
 
   "insert" should "adds a column at index `loc`" in {
-    initData(data)
-    println(s"data: $data")
-    println(s"df: ${df.data}")
+    val poisonField = new Field("poison", intType, null)
+    val schemaFields = List(speedField, staminaField, poisonField)
+    val schema: Schema = new Schema(schemaFields.asJava)
+    val data: VectorSchemaRoot = VectorSchemaRoot.create(schema, new RootAllocator())
+    val df = ArrowDataFrame(data, index)
+
+    //df.data.allocateNew()
     val poisonVector: UInt4Vector =
       data.getVector("poison").asInstanceOf[UInt4Vector]
-    println(s"vector: $poisonVector")
     poisonVector.allocateNew()
     poisonVector.setSafe(0, 1) // setSafe checks we don't exceed initialCapacity
     poisonVector.setSafe(1, 4)
@@ -328,7 +330,7 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
 
     val newDF = DataFrame[ArrowDataFrame]
       .insert[UInt4Vector](df, 1, "poison", poisonVector, false)
-    .getOrElse(nullArrowDF)
+      .getOrElse(nullArrowDF)
     newDF.data.getVector("poison") shouldBe poisonVector
   }
 }
