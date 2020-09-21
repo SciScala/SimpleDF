@@ -201,7 +201,6 @@ object DataFrame {
             ArraySeqDataFrame(n, df.index, c)
           )
         }
-    }
 
       override def empty(df: ArraySeqDataFrame): Boolean = df.data.isEmpty
 

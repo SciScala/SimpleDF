@@ -19,6 +19,7 @@ import org.scalactic.Equality
 import scala.collection.mutable.ListBuffer
 
 import DataFrame.ops._
+import scala.languageFeature.postfixOps
 
 class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
 
@@ -96,6 +97,7 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     data.allocateNew()
     val speedVector: UInt4Vector =
       data.getVector("speed").asInstanceOf[UInt4Vector]
+    println(s"speed: $speedVector")
     speedVector.allocateNew()
     speedVector.setSafe(0, 1) // setSafe checks we don't exceed initialCapacity
     speedVector.setSafe(1, 4)
@@ -306,29 +308,27 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
 
   "empty" should "return false if dataframe is not empty" in {
     DataFrame[ArrowDataFrame].empty(df) shouldBe false
+  }
 
   "insert" should "adds a column at index `loc`" in {
-    df.data.allocateNew()
-    val speedVector: UInt4Vector =
-      data.getVector("speed").asInstanceOf[UInt4Vector]
-    speedVector.allocateNew()
-    speedVector.setSafe(0, 1) // setSafe checks we don't exceed initialCapacity
-    speedVector.setSafe(1, 4)
-    speedVector.setSafe(2, 7)
-    speedVector.setSafe(3, 10)
-    speedVector.setSafe(4, 13)
-    speedVector.setSafe(5, 16)
-    speedVector.setValueCount(6)
-    val newVector = df.data.getVector(col).asInstanceOf[A]
-    newVector.allocateNew()
-    value.foreach(newVector.setSafe(loc, _))
-    newVector.setValueCount(6)
+    initData(data)
+    println(s"data: $data")
+    println(s"df: ${df.data}")
+    val poisonVector: UInt4Vector =
+      data.getVector("poison").asInstanceOf[UInt4Vector]
+    println(s"vector: $poisonVector")
+    poisonVector.allocateNew()
+    poisonVector.setSafe(0, 1) // setSafe checks we don't exceed initialCapacity
+    poisonVector.setSafe(1, 4)
+    poisonVector.setSafe(2, 7)
+    poisonVector.setSafe(3, 10)
+    poisonVector.setSafe(4, 13)
+    poisonVector.setSafe(5, 16)
+    poisonVector.setValueCount(6)
 
-    val newCol = ArraySeq(13, 15, 17, 19, 11, 20)
-    val newDF = DataFrame[ArraySeqDataFrame]
-      .insert[Column[Int]](df, 1, "sight", newCol, false)
-      .getOrElse(nullArraySeqDF)
-    newDF.data(1) shouldBe newCol
-
+    val newDF = DataFrame[ArrowDataFrame]
+      .insert[UInt4Vector](df, 1, "poison", poisonVector, false)
+    .getOrElse(nullArrowDF)
+    newDF.data.getVector("poison") shouldBe poisonVector
   }
 }
