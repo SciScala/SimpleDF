@@ -206,4 +206,12 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
     val newDF = DataFrame[ArraySeqDataFrame].insert[Column[Int]](df, 1, "sight", newCol, false).getOrElse(nullArraySeqDF)
     newDF.data(1) shouldBe newCol
    }
+
+  "empty" should "return true if dataframe is empty" in {
+    DataFrame[ArraySeqDataFrame].empty(nullArraySeqDF) shouldBe true
+  }
+
+  "empty" should "return false if dataframe is not empty" in {
+    DataFrame[ArraySeqDataFrame].empty(df) shouldBe false
+  }
 }
