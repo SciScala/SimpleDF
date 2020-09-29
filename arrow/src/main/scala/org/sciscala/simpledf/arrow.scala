@@ -8,6 +8,8 @@ import scala.collection.immutable.ArraySeq
 import scala.jdk.CollectionConverters._
 import scala.reflect.{ClassTag, classTag}
 
+import org.apache.arrow.vector.types.pojo.Field
+
 //import DataFrame.ops._
 
 case class ArrowDataFrame(
@@ -35,48 +37,11 @@ object arrow {
   implicit val arrowDF: DataFrame[ArrowDataFrame] =
     new DataFrame[ArrowDataFrame] {
 
-      override def data(df: ArrowDataFrame): Seq[Column[_]] = {
-        val fvs: java.util.List[FieldVector] = df.data.getFieldVectors
-        val fvSeq: Seq[FieldVector] =
-          fvs.toArray(Array.empty[FieldVector]).toSeq
-        fvSeq.map(_.asScala.toSeq)
-      }
-
-
-      override def index(df: ArrowDataFrame): Seq[String] = df.index
-
-      override def columns(df: ArrowDataFrame): Seq[String] = df.columns
-
-      override def head(df: ArrowDataFrame, n: Int = 5): ArrowDataFrame = {
-        val d = df.data.slice(0, n)
-        ArrowDataFrame(d, df.index.take(n))
-      }
-
-      override def tail(df: ArrowDataFrame, n: Int = 5): ArrowDataFrame = {
-        val size = df.data.getRowCount
-        val d = df.data.slice(size - n, size)
-        ArrowDataFrame(d, df.index.takeRight(n))
-      }
-
-      override def at[A](
-          df: ArrowDataFrame,
-          rowIdx: Label,
-          colIdx: Label
-      ): Option[A] = {
-        val row: Int = df.index.indexOf(rowIdx)
-        if (row == -1) None
-        else {
-          val col = df.data.getVector(colIdx)
-          if (col == null) None
-          else Some(col.getObject(row).asInstanceOf[A])
-        }
-      }
-
       private def translateCoordinates(
-          df: ArrowDataFrame,
-          i: Coord,
-          j: Coord
-      ): (Coord, Coord) = (i, j) match {
+                                        df: ArrowDataFrame,
+                                        i: Coord,
+                                        j: Coord
+                                      ): (Coord, Coord) = (i, j) match {
         case (i1, j1) if (i1 < 0 && j1 < 0) =>
           (df.shape._1 + i, df.shape._2 + j)
         case (i1, j1) if (i1 < 0 && j1 <= df.shape._2) =>
@@ -87,6 +52,49 @@ object arrow {
           (i, j)
       }
 
+      override def at[A](
+                          df: ArrowDataFrame,
+                          rowIdx: Label,
+                          colIdx: Label
+                        ): Option[A] = {
+        val row: Int = df.index.indexOf(rowIdx)
+        if (row == -1) None
+        else {
+          val col = df.data.getVector(colIdx)
+          if (col == null) None
+          else Some(col.getObject(row).asInstanceOf[A])
+        }
+      }
+
+      override def empty(df: ArrowDataFrame): Boolean = df.data.getRowCount() == 0
+
+      override def columns(df: ArrowDataFrame): Seq[String] = df.columns
+
+      override def data(df: ArrowDataFrame): Seq[Column[_]] = {
+        val fvs: java.util.List[FieldVector] = df.data.getFieldVectors
+        val fvSeq: Seq[FieldVector] =
+          fvs.toArray(Array.empty[FieldVector]).toSeq
+        fvSeq.map(_.asScala.toSeq)
+      }
+
+      def get[A](df: ArrowDataFrame, key: A, default: Option[ArrowDataFrame]): ArrowDataFrame = {
+        val col = key match {
+          case s:String => df.data.getVector(s)
+          case _ => df.data.getVector(key.toString)
+        }
+
+        if (col == null) default.getOrElse(nullArrowDF)
+        else {
+          val data: VectorSchemaRoot = new VectorSchemaRoot(List(col).asJava)
+          ArrowDataFrame(data, df.index)
+        }
+      }
+
+      override def head(df: ArrowDataFrame, n: Int = 5): ArrowDataFrame = {
+        val d = df.data.slice(0, n)
+        ArrowDataFrame(d, df.index.take(n))
+      }
+
       override def iat[A](df: ArrowDataFrame, i: Coord, j: Coord): Option[A] = {
         val (i1, j1) = translateCoordinates(df, i, j)
         val l = df.data.getVector(j1)
@@ -94,6 +102,25 @@ object arrow {
           Option(l.getObject(i1).asInstanceOf[A])
         } else None
       }
+
+      override def index(df: ArrowDataFrame): Seq[String] = df.index
+
+      override def insert[A](
+                              df: ArrowDataFrame,
+                              loc: Coord,
+                              col: Label,
+                              value: A,
+                              allow_duplicates: Boolean
+                            ): Either[Error, ArrowDataFrame] =
+        if (loc < 0) {
+          Left(InsertError("Column index must be 0 or greater"))
+        } else if (loc > df.data.getFieldVectors().size()) {
+          Left(InsertError("Column index is bigger than maximum size"))
+        } else {
+          Right(
+            ArrowDataFrame(df.data.addVector(loc, value.asInstanceOf[FieldVector]), df.index)
+          )
+        }
 
       override def loc(df: ArrowDataFrame, index: Label): ArrowDataFrame = {
         val row = df.index.indexOf(index)
@@ -131,31 +158,17 @@ object arrow {
           }
         }
       }
-
-      override def insert[A](
-          df: ArrowDataFrame,
-          loc: Coord,
-          col: Label,
-          value: A,
-          allow_duplicates: Boolean
-      ): Either[Error, ArrowDataFrame] =
-        if (loc < 0) {
-          Left(InsertError("Column index must be 0 or greater"))
-        } else if (loc > df.data.getFieldVectors().size()) {
-          Left(InsertError("Column index is bigger than maximum size"))
-        } else {
-          Right(
-            ArrowDataFrame(df.data.addVector(loc, value.asInstanceOf[FieldVector]), df.index)
-          )
-        }
-
       override def shape(df: ArrowDataFrame): (Int, Int) =
         df.shape
 
       override def size(df: ArrowDataFrame): Int =
         df.size
 
-    override def empty(df: ArrowDataFrame): Boolean = df.data.getRowCount() == 0
+      override def tail(df: ArrowDataFrame, n: Int = 5): ArrowDataFrame = {
+        val size = df.data.getRowCount
+        val d = df.data.slice(size - n, size)
+        ArrowDataFrame(d, df.index.takeRight(n))
+      }
   }
 
 

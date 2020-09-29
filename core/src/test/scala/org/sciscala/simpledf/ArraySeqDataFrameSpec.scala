@@ -214,4 +214,12 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
   "empty" should "return false if dataframe is not empty" in {
     DataFrame[ArraySeqDataFrame].empty(df) shouldBe false
   }
+
+  "get(name)" should "return the dataframe with the `name` label" in {
+    DataFrame[ArraySeqDataFrame].get[String](df, "speed", None) shouldBe ArraySeqDataFrame(ArraySeq(ArraySeq(1,4,7,10,13,16)), index, ArraySeq("speed"))
+  }
+
+  "get(unknown)" should "return the default value" in {
+    DataFrame[ArraySeqDataFrame].get[String](df, "poison", None) shouldBe nullArraySeqDF
+  }
 }
