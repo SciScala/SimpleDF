@@ -22,19 +22,14 @@ final case class InsertError(message: String) extends Error
 
 @typeclass trait DataFrame[DFImpl] {
 
-  def data(df: DFImpl): Seq[Column[_]]
-  def index(df: DFImpl): Seq[String]
-  def columns(df: DFImpl): Seq[String]
-  def head(df: DFImpl, n: Int = 5): DFImpl
-  def tail(df: DFImpl, n: Int = 5): DFImpl
   def at[A](df: DFImpl, rowIdx: Label, colIdx: Label): Option[A]
+  def columns(df: DFImpl): Seq[String]
+  def data(df: DFImpl): Seq[Column[_]]
+  def empty(df: DFImpl): Boolean
+  def get[A](df: DFImpl, key: A, default: Option[DFImpl]): DFImpl
+  def head(df: DFImpl, n: Int = 5): DFImpl
   def iat[A](df: DFImpl, i: Coord, j: Coord): Option[A]
-  def loc(df: DFImpl, index: Label): DFImpl
-  def loc[I: ClassTag: IsIndex](df: DFImpl, index: Seq[I]): DFImpl
-  def shape(df: DFImpl): (Int, Int)
-  def size(df: DFImpl): Int
-  def to[A](df: DFImpl)(implicit E: Encoder[DFImpl, A]): Seq[A] =
-    E.encode(df)
+  def index(df: DFImpl): Seq[String]
   def insert[A](
       df: DFImpl,
       loc: Int,
@@ -42,7 +37,13 @@ final case class InsertError(message: String) extends Error
       value: A,
       allow_duplicates: Boolean
   ): Either[Error, DFImpl]
-  def empty(df: DFImpl): Boolean 
+  def loc(df: DFImpl, index: Label): DFImpl
+  def loc[I: ClassTag: IsIndex](df: DFImpl, index: Seq[I]): DFImpl
+  def shape(df: DFImpl): (Int, Int)
+  def size(df: DFImpl): Int
+  def tail(df: DFImpl, n: Int = 5): DFImpl
+  def to[A](df: DFImpl)(implicit E: Encoder[DFImpl, A]): Seq[A] =
+    E.encode(df)
 }
 
 object DataFrame {
@@ -55,28 +56,6 @@ object DataFrame {
         ArraySeq.empty[String],
         ArraySeq.empty[String]
       )
-
-      override def data(df: ArraySeqDataFrame): ArraySeq[Column[_]] = df.data
-
-      override def index(df: ArraySeqDataFrame): ArraySeq[String] = df.index
-
-      override def columns(df: ArraySeqDataFrame): ArraySeq[String] = df.columns
-
-      override def head(
-          df: ArraySeqDataFrame,
-          n: Int = 5
-      ): ArraySeqDataFrame =
-        ArraySeqDataFrame(df.data.take(n), df.index.take(n), df.columns.take(n))
-
-      override def tail(
-          df: ArraySeqDataFrame,
-          n: Int = 5
-      ): ArraySeqDataFrame =
-        ArraySeqDataFrame(
-          df.data.takeRight(n),
-          df.index.takeRight(n),
-          df.columns.takeRight(n)
-        )
 
       override def at[A](
           df: ArraySeqDataFrame,
@@ -91,6 +70,24 @@ object DataFrame {
           else Some(df.data(col)(row).asInstanceOf[A])
         }
       }
+
+      override def columns(df: ArraySeqDataFrame): ArraySeq[String] = df.columns
+      override def data(df: ArraySeqDataFrame): ArraySeq[Column[_]] = df.data
+      override def empty(df: ArraySeqDataFrame): Boolean = df.data.isEmpty
+
+      override def get[A](df: ArraySeqDataFrame, key: A, default: Option[ArraySeqDataFrame]): ArraySeqDataFrame = {
+        val col = df.columns.indexOf(key)
+        if (col == -1) default.getOrElse(nullArraySeqDF)
+        else ArraySeqDataFrame(ArraySeq(df.data(col)), df.index, ArraySeq(df.columns(col)))
+      }
+
+      override def index(df: ArraySeqDataFrame): ArraySeq[String] = df.index
+
+      override def head(
+          df: ArraySeqDataFrame,
+          n: Int = 5
+      ): ArraySeqDataFrame =
+        ArraySeqDataFrame(df.data.take(n), df.index.take(n), df.columns.take(n))
 
       override def iat[A](
           df: ArraySeqDataFrame,
@@ -107,6 +104,27 @@ object DataFrame {
           case (i1, j1) if (i1 < df.shape._1 && j1 < df.shape._2) =>
             Some(df.data(col)(row).asInstanceOf[A])
           case (_, _) => None
+        }
+
+      override def insert[A](
+          df: ArraySeqDataFrame,
+          loc: Coord,
+          col: Label,
+          value: A,
+          allow_duplicates: Boolean
+      ): Either[Error, ArraySeqDataFrame] =
+        if (loc < 0) {
+          Left(InsertError("Column index must be 0 or greater"))
+        } else if (loc > df.data.size) {
+          Left(InsertError("Column index is bigger than maximum size"))
+        } else {
+          val (h, t) = df.data.splitAt(loc)
+          val (hc, tc) = df.columns.splitAt(loc)
+          val n = (h :+ value.asInstanceOf[Column[_]]) ++ t
+          val c = (hc :+ col) ++ tc
+          Right(
+            ArraySeqDataFrame(n, df.index, c)
+          )
         }
 
       override def loc(
@@ -176,34 +194,20 @@ object DataFrame {
         }
       }
 
-      override def shape(df: ArraySeqDataFrame): (Int, Int) = df.shape
-
       override def size(df: ArraySeqDataFrame): Int =
         (df.data.length * df.data(0).size)
 
-      override def insert[A](
+      override def shape(df: ArraySeqDataFrame): (Int, Int) = df.shape
+
+      override def tail(
           df: ArraySeqDataFrame,
-          loc: Coord,
-          col: Label,
-          value: A,
-          allow_duplicates: Boolean
-      ): Either[Error, ArraySeqDataFrame] =
-        if (loc < 0) {
-          Left(InsertError("Column index must be 0 or greater"))
-        } else if (loc > df.data.size) {
-          Left(InsertError("Column index is bigger than maximum size"))
-        } else {
-          val (h, t) = df.data.splitAt(loc)
-          val (hc, tc) = df.columns.splitAt(loc)
-          val n = (h :+ value.asInstanceOf[Column[_]]) ++ t
-          val c = (hc :+ col) ++ tc
-          Right(
-            ArraySeqDataFrame(n, df.index, c)
-          )
-        }
-
-      override def empty(df: ArraySeqDataFrame): Boolean = df.data.isEmpty
-
+          n: Int = 5
+      ): ArraySeqDataFrame =
+        ArraySeqDataFrame(
+          df.data.takeRight(n),
+          df.index.takeRight(n),
+          df.columns.takeRight(n)
+        )
     }
 
 }

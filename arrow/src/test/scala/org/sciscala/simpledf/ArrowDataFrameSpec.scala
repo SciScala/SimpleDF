@@ -48,13 +48,18 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
   }
 
   implicit val schemaRootDataFrame: Equality[VectorSchemaRoot] =
-    new Equality[VectorSchemaRoot] {
-      override def areEqual(a: VectorSchemaRoot, b: Any): Boolean =
-        b match {
-          case root: VectorSchemaRoot =>
-            a.equals(root)
-          case _ => false
-        }
+    (a: VectorSchemaRoot, b: Any) => b match {
+      case root: VectorSchemaRoot =>
+        a.equals(root)
+      case _ => false
+    }
+
+  implicit val fieldVectorDataFrame: Equality[FieldVector] =
+    (a: FieldVector, b: Any) => b match {
+      case field: FieldVector =>
+        a.getField.equals(field) &&
+          a.asScala.zip(field.asScala).foldLeft(true)( (acc,c) => acc && (c._1 == c._2))
+      case _ => false
     }
 
   val intType = new FieldType(false, new ArrowType.Int(32, false), null)
@@ -213,6 +218,35 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     DataFrame[ArrowDataFrame].at(df, "viper", "venom") shouldBe None
   }
 
+  "get(name)" should "return the dataframe with the `name` label" in {
+    val schema: Schema = new Schema(List(speedField).asJava)
+    val data: VectorSchemaRoot = VectorSchemaRoot.create(schema, new RootAllocator())
+    data.allocateNew()
+    val speedVector: UInt4Vector =
+      data.getVector("speed").asInstanceOf[UInt4Vector]
+    speedVector.allocateNew()
+    speedVector.setSafe(0, 1) // setSafe checks we don't exceed initialCapacity
+    speedVector.setSafe(1, 4)
+    speedVector.setSafe(2, 7)
+    speedVector.setSafe(3, 10)
+    speedVector.setSafe(4, 13)
+    speedVector.setSafe(5, 16)
+    speedVector.setValueCount(6)
+    data.setRowCount(6)
+
+    val expected = ArrowDataFrame(data, index)
+    val arrDF = DataFrame[ArrowDataFrame].get[String](df, "speed", None)
+
+    arrDF.data.getFieldVectors.size() shouldBe 1
+    val actual = arrDF.data.getVector(0)
+    val expectedVector = expected.data.getVector("speed")
+    actual === expectedVector
+  }
+
+  "get(unknown)" should "return the default value" in {
+    DataFrame[ArrowDataFrame].get[String](df, "poison", None) shouldBe nullArrowDF
+  }
+
   "loc('viper')" should "return df's first row" in {
     data.clear()
     data.allocateNew()
@@ -319,14 +353,12 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     //df.data.allocateNew()
     val poisonVector: UInt4Vector =
       data.getVector("poison").asInstanceOf[UInt4Vector]
-    poisonVector.allocateNew()
     poisonVector.setSafe(0, 1) // setSafe checks we don't exceed initialCapacity
     poisonVector.setSafe(1, 4)
     poisonVector.setSafe(2, 7)
     poisonVector.setSafe(3, 10)
     poisonVector.setSafe(4, 13)
     poisonVector.setSafe(5, 16)
-    poisonVector.setValueCount(6)
 
     val newDF = DataFrame[ArrowDataFrame]
       .insert[UInt4Vector](df, 1, "poison", poisonVector, false)
