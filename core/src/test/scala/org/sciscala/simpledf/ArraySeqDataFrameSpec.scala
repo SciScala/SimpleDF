@@ -222,4 +222,12 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
   "get(unknown)" should "return the default value" in {
     DataFrame[ArraySeqDataFrame].get[String](df, "poison", None) shouldBe nullArraySeqDF
   }
+
+  "items" should "return data in Array[(columnName, series)] format, here series is ArraySeq" in {
+    df.items shouldBe Array("speed" -> data(0), "stamina" -> data(1))
+  }
+
+  "items" should "return empty array for emptyDF" in {
+    nullArraySeqDF.items shouldBe Array()
+  }
 }

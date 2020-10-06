@@ -20,6 +20,7 @@ import scala.collection.mutable.ListBuffer
 
 import DataFrame.ops._
 import scala.languageFeature.postfixOps
+import org.apache.arrow.vector.ValueVector
 
 class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
 
@@ -364,5 +365,15 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
       .insert[UInt4Vector](df, 1, "poison", poisonVector, false)
       .getOrElse(nullArrowDF)
     newDF.data.getVector("poison") shouldBe poisonVector
+  }
+
+  "items" should "return data in Array[(columnName, series)] format, here series is FieldVector" in {
+    val speedVectorAsSeq = ArrowUtils.vectorAsSeq(df.shape._1,data.getVector("speed"))
+    val staminaVectorAsSeq = ArrowUtils.vectorAsSeq(df.shape._1,data.getVector("stamina"))
+    df.items shouldBe Array("speed" -> speedVectorAsSeq, "stamina" -> staminaVectorAsSeq)
+  }
+
+  "items" should "return empty array for emptyDF" in {
+    nullArrowDF.items shouldBe Array() 
   }
 }

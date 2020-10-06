@@ -44,6 +44,7 @@ final case class InsertError(message: String) extends Error
   def tail(df: DFImpl, n: Int = 5): DFImpl
   def to[A](df: DFImpl)(implicit E: Encoder[DFImpl, A]): Seq[A] =
     E.encode(df)
+  def items(df: DFImpl): Array[(String, Column[_])]
 }
 
 object DataFrame {
@@ -208,6 +209,12 @@ object DataFrame {
           df.index.takeRight(n),
           df.columns.takeRight(n)
         )
+
+      override def items(df: ArraySeqDataFrame): Array[(String, Column[_])] = {
+        for {
+          index <- df.columns.indices.toArray
+        } yield (df.columns(index), df.data(index))
+      }
     }
 
 }
