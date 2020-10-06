@@ -223,7 +223,7 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
     DataFrame[ArraySeqDataFrame].get[String](df, "poison", None) shouldBe nullArraySeqDF
   }
 
-  "items" should "return data in Array[(columnName, series)] format, here series is ArraySeq" in {
+  "items" should "return data in Array[(columnName, Column)] format" in {
     df.items shouldBe Array("speed" -> data(0), "stamina" -> data(1))
   }
 
