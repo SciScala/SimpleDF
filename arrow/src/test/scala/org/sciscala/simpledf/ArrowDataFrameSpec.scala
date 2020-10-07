@@ -365,4 +365,14 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
       .getOrElse(nullArrowDF)
     newDF.data.getVector("poison") shouldBe poisonVector
   }
+
+  "items" should "return data in Array[(columnName, Column)] format" in {
+    val speedVectorAsSeq = ArrowUtils.vectorAsSeq(df.shape._1,data.getVector("speed"))
+    val staminaVectorAsSeq = ArrowUtils.vectorAsSeq(df.shape._1,data.getVector("stamina"))
+    df.items shouldBe Array("speed" -> speedVectorAsSeq, "stamina" -> staminaVectorAsSeq)
+  }
+
+  "items" should "return empty array for emptyDF" in {
+    nullArrowDF.items shouldBe Array() 
+  }
 }

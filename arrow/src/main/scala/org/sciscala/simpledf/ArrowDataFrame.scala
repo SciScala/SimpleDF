@@ -71,10 +71,8 @@ object arrow {
       override def columns(df: ArrowDataFrame): Seq[String] = df.columns
 
       override def data(df: ArrowDataFrame): Seq[Column[_]] = {
-        val fvs: java.util.List[FieldVector] = df.data.getFieldVectors
-        val fvSeq: Seq[FieldVector] =
-          fvs.toArray(Array.empty[FieldVector]).toSeq
-        fvSeq.map(_.asScala.toSeq)
+        val fvs: Seq[FieldVector] = df.data.getFieldVectors.asScala.toSeq
+        fvs.map(vector => ArrowUtils.vectorAsSeq(df.shape._1, vector))
       }
 
       def get[A](df: ArrowDataFrame, key: A, default: Option[ArrowDataFrame]): ArrowDataFrame = {
@@ -168,6 +166,11 @@ object arrow {
         val size = df.data.getRowCount
         val d = df.data.slice(size - n, size)
         ArrowDataFrame(d, df.index.takeRight(n))
+      }
+
+      override def items(df: ArrowDataFrame): Array[(String, Column[_])] = {
+        val dataAsColumns: Seq[Column[_]] = DataFrame[ArrowDataFrame].data(df)
+        for ( index <- df.columns.indices.toArray) yield df.columns(index) -> dataAsColumns(index)
       }
   }
 
