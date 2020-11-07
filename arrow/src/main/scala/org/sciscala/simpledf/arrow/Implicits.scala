@@ -1,33 +1,18 @@
-package org.sciscala.simpledf
+package org.sciscala.simpledf.arrow
 
 import org.apache.arrow.memory.{BufferAllocator, RootAllocator}
-import org.apache.arrow.vector.types.pojo.Schema
+import org.apache.arrow.vector.types.pojo._
 import org.apache.arrow.vector.{FieldVector, VectorSchemaRoot}
 
 import scala.collection.immutable.ArraySeq
 import scala.jdk.CollectionConverters._
 import scala.reflect.{ClassTag, classTag}
 
-import org.apache.arrow.vector.types.pojo.Field
+import org.sciscala.simpledf._
+import org.sciscala.simpledf.row.Row
+import org.sciscala.simpledf.error._
 
-//import DataFrame.ops._
-
-case class ArrowDataFrame(
-    data: VectorSchemaRoot,
-    index: Seq[String]
-    //columns: ArraySeq[String]
-) {
-  val columns: ArraySeq[String] =
-    ArraySeq.from(data.getSchema.getFields.asScala.map(f => f.getName))
-
-  val shape: (Int, Int) =
-    (this.data.getRowCount, this.data.getFieldVectors.size())
-
-  val size: Int =
-    this.data.getRowCount * this.data.getFieldVectors.size()
-}
-
-object arrow {
+object Implicits {
 
   val nullArrowDF = ArrowDataFrame(
     VectorSchemaRoot.of(Array.empty[FieldVector]: _*),
@@ -52,7 +37,7 @@ object arrow {
           (i, j)
       }
 
-      override def at[A](
+      def at[A](
                           df: ArrowDataFrame,
                           rowIdx: Label,
                           colIdx: Label
@@ -66,11 +51,11 @@ object arrow {
         }
       }
 
-      override def empty(df: ArrowDataFrame): Boolean = df.data.getRowCount() == 0
+      def empty(df: ArrowDataFrame): Boolean = df.data.getRowCount() == 0
 
-      override def columns(df: ArrowDataFrame): Seq[String] = df.columns
+      def columns(df: ArrowDataFrame): Seq[String] = df.columns
 
-      override def data(df: ArrowDataFrame): Seq[Column[_]] = {
+      def data(df: ArrowDataFrame): Seq[Column[_]] = {
         val fvs: Seq[FieldVector] = df.data.getFieldVectors.asScala.toSeq
         fvs.map(vector => ArrowUtils.vectorAsSeq(df.shape._1, vector))
       }
@@ -88,12 +73,12 @@ object arrow {
         }
       }
 
-      override def head(df: ArrowDataFrame, n: Int = 5): ArrowDataFrame = {
+      def head(df: ArrowDataFrame, n: Int = 5): ArrowDataFrame = {
         val d = df.data.slice(0, n)
         ArrowDataFrame(d, df.index.take(n))
       }
 
-      override def iat[A](df: ArrowDataFrame, i: Coord, j: Coord): Option[A] = {
+      def iat[A](df: ArrowDataFrame, i: Coord, j: Coord): Option[A] = {
         val (i1, j1) = translateCoordinates(df, i, j)
         val l = df.data.getVector(j1)
         if (i1 <= l.getValueCount) {
@@ -101,9 +86,9 @@ object arrow {
         } else None
       }
 
-      override def index(df: ArrowDataFrame): Seq[String] = df.index
+      def index(df: ArrowDataFrame): Seq[String] = df.index
 
-      override def insert[A](
+      def insert[A](
                               df: ArrowDataFrame,
                               loc: Coord,
                               col: Label,
@@ -120,14 +105,14 @@ object arrow {
           )
         }
 
-      override def loc(df: ArrowDataFrame, index: Label): ArrowDataFrame = {
+      def loc(df: ArrowDataFrame, index: Label): ArrowDataFrame = {
         val row = df.index.indexOf(index)
         if (row == -1) nullArrowDF
         else
           ArrowDataFrame(df.data.slice(row, row + 1), ArraySeq(df.index(row)))
       }
 
-      override def loc[I: ClassTag: IsIndex](
+      def loc[I: ClassTag: IsIndex](
           df: ArrowDataFrame,
           index: Seq[I]
       ): ArrowDataFrame = {
@@ -156,22 +141,25 @@ object arrow {
           }
         }
       }
-      override def shape(df: ArrowDataFrame): (Int, Int) =
+      def shape(df: ArrowDataFrame): (Int, Int) =
         df.shape
 
-      override def size(df: ArrowDataFrame): Int =
+      def size(df: ArrowDataFrame): Int =
         df.size
 
-      override def tail(df: ArrowDataFrame, n: Int = 5): ArrowDataFrame = {
+      def tail(df: ArrowDataFrame, n: Int = 5): ArrowDataFrame = {
         val size = df.data.getRowCount
         val d = df.data.slice(size - n, size)
         ArrowDataFrame(d, df.index.takeRight(n))
       }
 
-      override def items(df: ArrowDataFrame): Array[(String, Column[_])] = {
-        val dataAsColumns: Seq[Column[_]] = DataFrame[ArrowDataFrame].data(df)
+      def items(df: ArrowDataFrame): Array[(String, Column[_])] = {
+        val dataAsColumns = DataFrame[ArrowDataFrame].data(df)
         for ( index <- df.columns.indices.toArray) yield df.columns(index) -> dataAsColumns(index)
       }
+
+      def iterrows(df: ArrowDataFrame)(implicit encoder: Encoder[ArrowDataFrame,Row]): Seq[(String, Row)] = encoder.encode(df).zip(index(df)).map(_.swap)
+
   }
 
 

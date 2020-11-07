@@ -1,14 +1,11 @@
-package org.sciscala.simpledf
+package org.sciscala.simpledf.arrow
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.apache.arrow.vector.{FieldVector, UInt4Vector, VectorSchemaRoot}
 import org.apache.arrow.memory.RootAllocator
 import org.apache.arrow.vector.complex.reader.FieldReader
-import org.apache.arrow.vector.types.pojo.Schema
-import org.apache.arrow.vector.types.pojo.Field
-import org.apache.arrow.vector.types.pojo.FieldType
-import org.apache.arrow.vector.types.pojo.ArrowType
+import org.apache.arrow.vector.types.pojo._
 
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable.{Seq => MSeq}
@@ -18,7 +15,10 @@ import org.scalactic.Equality
 
 import scala.collection.mutable.ListBuffer
 
-import DataFrame.ops._
+import org.sciscala.simpledf._
+import org.sciscala.simpledf.arrow._
+import org.sciscala.simpledf.arrow.ArrowEncoder._
+import org.sciscala.simpledf.arrow.Implicits._
 import scala.languageFeature.postfixOps
 
 class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
@@ -369,10 +369,40 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
   "items" should "return data in Array[(columnName, Column)] format" in {
     val speedVectorAsSeq = ArrowUtils.vectorAsSeq(df.shape._1,data.getVector("speed"))
     val staminaVectorAsSeq = ArrowUtils.vectorAsSeq(df.shape._1,data.getVector("stamina"))
-    df.items shouldBe Array("speed" -> speedVectorAsSeq, "stamina" -> staminaVectorAsSeq)
+    DataFrame[ArrowDataFrame].items(df) shouldBe Array("speed" -> speedVectorAsSeq, "stamina" -> staminaVectorAsSeq)
   }
 
   "items" should "return empty array for emptyDF" in {
-    nullArrowDF.items shouldBe Array() 
+    DataFrame[ArrowDataFrame].items(nullArrowDF) shouldBe Array() 
+  }
+
+  "iterrows" should "return sequence of tuples (index, Row) format" in {
+    import org.sciscala.simpledf.types._
+    import org.sciscala.simpledf.row.Row
+    val dfSchema = Schema(Seq(
+      Field("name", StringType, false),
+      Field("speed", IntType, false),
+      Field("stamina", IntType, false)
+    ))
+    DataFrame[ArrowDataFrame].iterrows(df)(arrowRowEncoder(dfSchema)) shouldBe Seq(
+      ("viper",Row(Seq(1,2), dfSchema)),
+      ("sidewinder",Row(Seq(4,5), dfSchema)),
+      ("cobra",Row(Seq(7,8), dfSchema)),
+      ("python",Row(Seq(10,11), dfSchema)),
+      ("anaconda",Row(Seq(13,14), dfSchema)),
+      ("yellowbeard",Row(Seq(16,17), dfSchema))
+    )
+
+
+  }
+
+  "iterrows" should "return empty sequence of tuples for emptyDF" in {
+    import org.sciscala.simpledf.types._
+    val dfSchema = Schema(Seq(
+      Field("name", StringType, false),
+      Field("speed", IntType, false),
+      Field("stamina", IntType, false)
+    ))
+    DataFrame[ArrowDataFrame].iterrows(nullArrowDF)(arrowRowEncoder(dfSchema)) shouldBe Seq()
   }
 }

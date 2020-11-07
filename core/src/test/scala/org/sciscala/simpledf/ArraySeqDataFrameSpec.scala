@@ -5,8 +5,13 @@ import scala.collection.immutable.ArraySeq
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scala.collection.mutable.ListBuffer
+import org.sciscala.simpledf.arrayseq.ArraySeqDataFrame
 
 import DataFrame.ops._
+import Implicits._
+import org.sciscala.simpledf.types._
+import org.sciscala.simpledf.row.Row
+import org.sciscala.simpledf.arrayseq.ArrayseqEncoder._
 
 class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
 
@@ -24,6 +29,13 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
     }
 
   }
+
+  val schema = Schema(Seq(
+    Field("name", StringType, false),
+    Field("speed", IntType, false),
+    Field("stamina", IntType, false)
+  ))
+
 
   val data = ArraySeq(
     ArraySeq(1,4,7,10,13,16),
@@ -152,7 +164,7 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
 
   "loc('viper')" should "return df's first row" in {
     DataFrame[ArraySeqDataFrame].loc(df, "viper") shouldBe
-      ArraySeqDataFrame(ArraySeq(ArraySeq(1), ArraySeq(2)), ArraySeq("viper"), cols)
+    ArraySeqDataFrame(ArraySeq(ArraySeq(1), ArraySeq(2)), ArraySeq("viper"), cols)
   }
 
   "loc('venom')" should "return 'null' dataframe" in {
@@ -161,12 +173,12 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
 
   "loc('viper', 'python')" should "return first and fourth rows" in {
     DataFrame[ArraySeqDataFrame].loc(df, Seq("viper", "python")) shouldBe
-      ArraySeqDataFrame(ArraySeq(ArraySeq(1, 10), ArraySeq(2, 11)), ArraySeq("viper", "python"), cols)
+    ArraySeqDataFrame(ArraySeq(ArraySeq(1, 10), ArraySeq(2, 11)), ArraySeq("viper", "python"), cols)
   }
 
   "loc('viper', 'venom')" should "return a dataframe with only 'viper' elements" in {
     DataFrame[ArraySeqDataFrame].loc(df, Seq("viper", "venom")) shouldBe
-      ArraySeqDataFrame(ArraySeq(ArraySeq(1), ArraySeq(2)), ArraySeq("viper"), cols)
+    ArraySeqDataFrame(ArraySeq(ArraySeq(1), ArraySeq(2)), ArraySeq("viper"), cols)
   }
 
   "loc(true, false, false, true, false, false)" should "return first and fourth rows" in {
@@ -205,7 +217,7 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
     val newCol = ArraySeq(13,15,17,19,11,20)
     val newDF = DataFrame[ArraySeqDataFrame].insert[Column[Int]](df, 1, "sight", newCol, false).getOrElse(nullArraySeqDF)
     newDF.data(1) shouldBe newCol
-   }
+  }
 
   "empty" should "return true if dataframe is empty" in {
     DataFrame[ArraySeqDataFrame].empty(nullArraySeqDF) shouldBe true
@@ -229,5 +241,21 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
 
   "items" should "return empty array for emptyDF" in {
     nullArraySeqDF.items shouldBe Array()
+  }
+
+  "iterrows" should "return sequence of tuples (index, Row) format" in {
+    df.iterrows(rowEncoder(schema)) shouldBe Seq(
+      ("viper",Row(Seq(1,2), schema)),
+      ("sidewinder",Row(Seq(4,5), schema)),
+      ("cobra",Row(Seq(7,8), schema)),
+      ("python",Row(Seq(10,11), schema)),
+      ("anaconda",Row(Seq(13,14), schema)),
+      ("yellowbeard",Row(Seq(16,17), schema))
+    )
+
+  }
+
+  "iterrows" should "return empty sequence of tuples for emptyDF" in {
+    nullArraySeqDF.iterrows(rowEncoder(schema)) shouldBe Seq()
   }
 }
