@@ -8,10 +8,9 @@ import scala.collection.mutable.ListBuffer
 import org.sciscala.simpledf.arrayseq.ArraySeqDataFrame
 
 import DataFrame.ops._
-import Implicits._
 import org.sciscala.simpledf.types._
 import org.sciscala.simpledf.row.Row
-import org.sciscala.simpledf.arrayseq.ArrayseqEncoder._
+import org.sciscala.simpledf.arrayseq.ArraySeqEncoder._
 
 class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
 
@@ -252,10 +251,10 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
       ("anaconda",Row(Seq(13,14), schema)),
       ("yellowbeard",Row(Seq(16,17), schema))
     )
-
   }
 
   "iterrows" should "return empty sequence of tuples for emptyDF" in {
     nullArraySeqDF.iterrows(rowEncoder(schema)) shouldBe Seq()
+
   }
 }

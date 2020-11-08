@@ -5,10 +5,10 @@ import org.sciscala.simpledf.row.Row
 import scala.reflect.{ClassTag, classTag}
 import spire.math.Numeric
 import simulacrum._
+import org.sciscala.simpledf.arrayseq.ArraySeqDataFrame
 
 
-@typeclass 
-trait DataFrame[DFImpl] {
+@typeclass trait DataFrame[DFImpl] { 
 
   def at[A](df: DFImpl, rowIdx: Label, colIdx: Label): Option[A]
   def columns(df: DFImpl): Seq[String]
@@ -34,5 +34,11 @@ trait DataFrame[DFImpl] {
     E.encode(df)
   def items(df: DFImpl): Array[(String, Column[_])]
   def iterrows(df: DFImpl)(implicit encoder: Encoder[DFImpl, Row]): Seq[(String, Row)]
+}
+
+object DataFrame {
+  def apply[A](f: => DataFrame[A]): DataFrame[A] = f
+
+  implicit val arraySeqDataFrame: DataFrame[ArraySeqDataFrame] = apply(ArraySeqDataFrame.dfInstance)
 }
 
