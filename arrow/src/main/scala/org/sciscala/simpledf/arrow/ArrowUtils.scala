@@ -1,4 +1,4 @@
-package org.sciscala.simpledf
+package org.sciscala.simpledf.arrow
 
 import org.apache.arrow.vector._
 import java.sql.Types._
