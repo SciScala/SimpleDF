@@ -9,6 +9,7 @@ import org.sciscala.simpledf.arrayseq.ArraySeqDataFrame
 
 import DataFrame.ops._
 import org.sciscala.simpledf.types._
+import org.sciscala.simpledf.codecs._
 import org.sciscala.simpledf.row.Row
 import org.sciscala.simpledf.arrayseq.ArraySeqEncoder._
 
@@ -17,7 +18,6 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
   case class Serpent(name: String, speed: Int, stamina: Int)
 
   implicit val ArraySeqDFEncoder = new Encoder[ArraySeqDataFrame, Serpent] {
-
     override def encode(df: ArraySeqDataFrame): Seq[Serpent] = {
       (0 until df.data(0).length).map(i => {
         val idx = if (df.index.isEmpty) i.toString else df.index(i)
@@ -26,19 +26,41 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
         Serpent(idx, speed, stamina)
       })
     }
-
   }
 
-  val schema = Schema(Seq(
-    Field("name", StringType, false),
-    Field("speed", IntType, false),
-    Field("stamina", IntType, false)
-  ))
+  implicit val ArraySeqDFDecoder = new Decoder[Serpent, ArraySeqDataFrame] {
+    override def decode(as: Seq[Serpent]): ArraySeqDataFrame = {
+      val cols = ArraySeq("speed", "stamina")
+      val size = as.size
+      var names = new Array[String](size)
+      var speeds = new Array[Int](size)
+      var staminas = new Array[Int](size)
+      as.zipWithIndex.foreach(srpnt => {
+        names(srpnt._2) = srpnt._1.name
+        speeds(srpnt._2) = srpnt._1.speed
+        staminas(srpnt._2) = srpnt._1.stamina
+        ()
+      })
 
+      val index = ArraySeq.from(names)
+      val data: ArraySeq[ArraySeq[_]] = ArraySeq(
+        ArraySeq.from(speeds), ArraySeq.from(staminas)
+      )
+     ArraySeqDataFrame(data,index,cols)
+    }
+  }
+
+  val schema = Schema(
+    Seq(
+      Field("name", StringType, false),
+      Field("speed", IntType, false),
+      Field("stamina", IntType, false)
+    )
+  )
 
   val data = ArraySeq(
-    ArraySeq(1,4,7,10,13,16),
-    ArraySeq(2,5,8,11,14,17)
+    ArraySeq(1, 4, 7, 10, 13, 16),
+    ArraySeq(2, 5, 8, 11, 14, 17)
   )
   val index = ArraySeq(
     "viper",
@@ -52,8 +74,13 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
   val df = ArraySeqDataFrame(data, index, cols)
   val dfNoIndex = ArraySeqDataFrame(data, ArraySeq.empty[String], cols)
   val dfNoCols = ArraySeqDataFrame(data, index, ArraySeq.empty[String])
-  val dfOnlyCols = ArraySeqDataFrame(ArraySeq(ArraySeq()), ArraySeq.empty[String], cols)
-  val nullArraySeqDF = ArraySeqDataFrame(ArraySeq.empty[ArraySeq[Int]], ArraySeq.empty[String], ArraySeq.empty[String])
+  val dfOnlyCols =
+    ArraySeqDataFrame(ArraySeq(ArraySeq()), ArraySeq.empty[String], cols)
+  val nullArraySeqDF = ArraySeqDataFrame(
+    ArraySeq.empty[ArraySeq[Int]],
+    ArraySeq.empty[String],
+    ArraySeq.empty[String]
+  )
 
   val serpents = ArraySeq(
     Serpent("viper", 1, 2),
@@ -163,7 +190,11 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
 
   "loc('viper')" should "return df's first row" in {
     df.loc("viper") shouldBe
-    ArraySeqDataFrame(ArraySeq(ArraySeq(1), ArraySeq(2)), ArraySeq("viper"), cols)
+      ArraySeqDataFrame(
+        ArraySeq(ArraySeq(1), ArraySeq(2)),
+        ArraySeq("viper"),
+        cols
+      )
   }
 
   "loc('venom')" should "return 'null' dataframe" in {
@@ -172,28 +203,37 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
 
   "loc('viper', 'python')" should "return first and fourth rows" in {
     df.loc(Seq("viper", "python")) shouldBe
-    ArraySeqDataFrame(ArraySeq(ArraySeq(1, 10), ArraySeq(2, 11)), ArraySeq("viper", "python"), cols)
+      ArraySeqDataFrame(
+        ArraySeq(ArraySeq(1, 10), ArraySeq(2, 11)),
+        ArraySeq("viper", "python"),
+        cols
+      )
   }
 
   "loc('viper', 'venom')" should "return a dataframe with only 'viper' elements" in {
     df.loc(Seq("viper", "venom")) shouldBe
-    ArraySeqDataFrame(ArraySeq(ArraySeq(1), ArraySeq(2)), ArraySeq("viper"), cols)
+      ArraySeqDataFrame(
+        ArraySeq(ArraySeq(1), ArraySeq(2)),
+        ArraySeq("viper"),
+        cols
+      )
   }
 
   "loc(true, false, false, true, false, false)" should "return first and fourth rows" in {
-    df
-      .loc(Seq(true, false, false, true, false, false)) shouldBe
-      ArraySeqDataFrame(ArraySeq(ArraySeq(1, 10), ArraySeq(2, 11)), ArraySeq("viper", "python"), cols)
+    df.loc(Seq(true, false, false, true, false, false)) shouldBe
+      ArraySeqDataFrame(
+        ArraySeq(ArraySeq(1, 10), ArraySeq(2, 11)),
+        ArraySeq("viper", "python"),
+        cols
+      )
   }
 
   "loc(false, false, false, false, false, false)" should "return a dataframe with no rows and only colNames" in {
-    df
-      .loc(Seq(false, false, false, false, false, false)) shouldBe dfOnlyCols
+    df.loc(Seq(false, false, false, false, false, false)) shouldBe dfOnlyCols
   }
 
   "loc(true, true, true, true, true, true)" should "be the original dataframe" in {
-    df
-      .loc(Seq(true, true, true, true, true, true)) shouldBe df
+    df.loc(Seq(true, true, true, true, true, true)) shouldBe df
   }
 
   "Encoder" should "encode DataFrame" in {
@@ -213,8 +253,10 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
   }
 
   "insert" should "adds a column at index `loc`" in {
-    val newCol = ArraySeq(13,15,17,19,11,20)
-    val newDF = df.insert[Column[Int]](1, "sight", newCol, false).getOrElse(nullArraySeqDF)
+    val newCol = ArraySeq(13, 15, 17, 19, 11, 20)
+    val newDF = df
+      .insert[Column[Int]](1, "sight", newCol, false)
+      .getOrElse(nullArraySeqDF)
     newDF.data(1) shouldBe newCol
   }
 
@@ -228,7 +270,11 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
 
   "get(name)" should "return the dataframe with the `name` label" in {
     //df.get[String](df, "speed", None) shouldBe ArraySeqDataFrame(ArraySeq(ArraySeq(1,4,7,10,13,16)), index, ArraySeq("speed"))
-    df.get[String]("speed", None) shouldBe ArraySeqDataFrame(ArraySeq(ArraySeq(1,4,7,10,13,16)), index, ArraySeq("speed"))
+    df.get[String]("speed", None) shouldBe ArraySeqDataFrame(
+      ArraySeq(ArraySeq(1, 4, 7, 10, 13, 16)),
+      index,
+      ArraySeq("speed")
+    )
   }
 
   "get(unknown)" should "return the default value" in {
@@ -245,17 +291,20 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
 
   "iterrows" should "return sequence of tuples (index, Row) format" in {
     df.iterrows(rowEncoder(schema)) shouldBe Seq(
-      ("viper",Row(Seq(1,2), schema)),
-      ("sidewinder",Row(Seq(4,5), schema)),
-      ("cobra",Row(Seq(7,8), schema)),
-      ("python",Row(Seq(10,11), schema)),
-      ("anaconda",Row(Seq(13,14), schema)),
-      ("yellowbeard",Row(Seq(16,17), schema))
+      ("viper", Row(Seq(1, 2), schema)),
+      ("sidewinder", Row(Seq(4, 5), schema)),
+      ("cobra", Row(Seq(7, 8), schema)),
+      ("python", Row(Seq(10, 11), schema)),
+      ("anaconda", Row(Seq(13, 14), schema)),
+      ("yellowbeard", Row(Seq(16, 17), schema))
     )
   }
 
   "iterrows" should "return empty sequence of tuples for emptyDF" in {
     nullArraySeqDF.iterrows(rowEncoder(schema)) shouldBe Seq()
+  }
 
+  "decoder" should "return `Serpents` as a Dataframe" in {
+    ArraySeqDFDecoder.decode(serpents) shouldBe df
   }
 }

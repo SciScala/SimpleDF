@@ -6,6 +6,7 @@ import scala.reflect.{ClassTag, classTag}
 import spire.math.Numeric
 import simulacrum._
 import org.sciscala.simpledf.arrayseq.ArraySeqDataFrame
+import org.sciscala.simpledf.codecs._
 
 
 @typeclass trait DataFrame[DFImpl] { 

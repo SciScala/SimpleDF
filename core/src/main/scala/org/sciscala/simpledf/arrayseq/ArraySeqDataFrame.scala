@@ -1,11 +1,15 @@
 package org.sciscala.simpledf.arrayseq
 
 import org.sciscala.simpledf._
+import org.sciscala.simpledf.codecs._
 import org.sciscala.simpledf.arrayseq._
 import org.sciscala.simpledf.error._
 import org.sciscala.simpledf.row.Row
 import scala.collection.immutable.ArraySeq
 import scala.reflect.{ClassTag, classTag}
+
+import simulacrum._
+import DataFrame.ops._
 
 case class ArraySeqDataFrame( 
   data: ArraySeq[Column[_]], 

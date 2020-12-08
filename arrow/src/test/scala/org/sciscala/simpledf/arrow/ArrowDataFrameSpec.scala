@@ -2,6 +2,7 @@ package org.sciscala.simpledf.arrow
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+
 import org.apache.arrow.vector.{FieldVector, UInt4Vector, VectorSchemaRoot}
 import org.apache.arrow.memory.RootAllocator
 import org.apache.arrow.vector.complex.reader.FieldReader
@@ -15,12 +16,15 @@ import org.scalactic.Equality
 
 import scala.collection.mutable.ListBuffer
 
+import simulacrum._
 import org.sciscala.simpledf._
 import org.sciscala.simpledf.DataFrame.ops._
+import org.sciscala.simpledf.codecs._
 import org.sciscala.simpledf.arrow.ArrowDataFrame
 import org.sciscala.simpledf.arrow.ArrowDataFrame._
 import org.sciscala.simpledf.arrow.ArrowEncoder._
 import org.sciscala.simpledf.arrow.implicits._
+
 import scala.languageFeature.postfixOps
 
 class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {

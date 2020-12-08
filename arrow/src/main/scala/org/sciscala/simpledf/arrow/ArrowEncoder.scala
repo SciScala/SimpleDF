@@ -1,10 +1,10 @@
 package org.sciscala.simpledf.arrow
 
-import org.sciscala.simpledf.Encoder
 import org.sciscala.simpledf.row.Row
 import org.sciscala.simpledf.types.Schema
 import scala.jdk.CollectionConverters._
 import org.sciscala.simpledf.types._
+import org.sciscala.simpledf.codecs._
 
 object ArrowEncoder {
 
