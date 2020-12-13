@@ -146,7 +146,7 @@ object ArrowDataFrame {
           }
           case "boolean" => {
             val filteredIdx: Seq[String] = index.zip(df.index).collect {
-              case b: (Boolean, String) if (b._1) => b._2
+              case b: (Boolean @unchecked, String @unchecked) if (b._1) => b._2
             }
             copyVectorsByIndex(filteredIdx, root, newVectors, df)
           }

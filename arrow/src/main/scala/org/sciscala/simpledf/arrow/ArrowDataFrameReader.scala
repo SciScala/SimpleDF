@@ -8,7 +8,6 @@ import org.apache.arrow.vector.ipc.SeekableReadChannel
 import org.apache.arrow.vector.ipc.ArrowFileReader
 import org.apache.arrow.memory.RootAllocator
 import org.apache.arrow.vector.VectorSchemaRoot
-import org.apache.arrow.vector.types.pojo.Schema
 import org.apache.arrow.vector.ipc.message.ArrowBlock
 
 import scala.jdk.CollectionConverters._
@@ -16,6 +15,7 @@ import org.apache.arrow.vector.FieldVector
 import org.sciscala.simpledf.{DataFrame, DataFrameReader}
 import org.sciscala.simpledf.codecs._
 import scala.reflect.ClassTag
+import org.sciscala.simpledf.types.Schema
 
 object ArrowDataFrameReader {
 
@@ -37,9 +37,9 @@ object ArrowDataFrameReader {
 
     override def readJson[A <: Serializable](filepath: Path)(implicit D: Decoder[A,ArrowDataFrame]): ArrowDataFrame = ???
 
-    override def readCSV[A <: Serializable : ClassTag](filepath: Path, headers: Boolean)(implicit D: Decoder[A,ArrowDataFrame]): ArrowDataFrame = ???
+    override def readCSV(filepath: Path, schema: Schema, isFirstRowHeaders: Boolean, indexColumnName: String = ""): ArrowDataFrame = ???
 
-    override def readCSV[A <: Serializable : ClassTag](csv: String)(implicit D: Decoder[A,ArrowDataFrame]): ArrowDataFrame = ???
+    override def readCSV(csv: String, schema: Schema, isFirstRowHeaders: Boolean, indexColumnName: String): ArrowDataFrame = ???
 
     override def readParquet(filepath: Path): ArrowDataFrame = ???
 

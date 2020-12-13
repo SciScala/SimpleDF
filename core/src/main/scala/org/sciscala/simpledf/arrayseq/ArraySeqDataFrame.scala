@@ -132,7 +132,7 @@ object ArraySeqDataFrame {
             val filteredIdx = index
               .zip(df.index)
               .collect {
-                case b: (Boolean, String) if (b._1) => b._2
+                case b: (Boolean @unchecked, String @unchecked) if (b._1) => b._2
               }
                 .map(df.index.indexOf(_))
                 val cols =
