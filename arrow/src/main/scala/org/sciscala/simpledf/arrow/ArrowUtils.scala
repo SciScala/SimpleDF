@@ -3,6 +3,8 @@ package org.sciscala.simpledf.arrow
 import org.apache.arrow.vector._
 import java.sql.Types._
 
+// Based on
+// https://github.com/apache/spark/blob/df04107934241965199bd5454c62e1016bb3bdd9/sql/catalyst/src/main/java/org/apache/spark/sql/vectorized/ArrowColumnVector.java
 object ArrowUtils {
 
   def vectorAsSeq(rowCount: Int, vector: FieldVector) : Seq[_] = {

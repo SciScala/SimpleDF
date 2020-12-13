@@ -1,23 +1,28 @@
 package org.sciscala.simpledf
 
+import java.nio.file.Paths;
+
 import scala.collection.immutable.ArraySeq
+import scala.collection.mutable.ListBuffer
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import scala.collection.mutable.ListBuffer
-import org.sciscala.simpledf.arrayseq.ArraySeqDataFrame
 
-import DataFrame.ops._
 import org.sciscala.simpledf.types._
+import org.sciscala.simpledf.codecs._
 import org.sciscala.simpledf.row.Row
 import org.sciscala.simpledf.arrayseq.ArraySeqEncoder._
+import org.sciscala.simpledf.arrayseq.ArraySeqDataFrame
+import org.sciscala.simpledf.arrayseq.ArraySeqDataFrameReader
+
+import DataFrame.ops._
+import DataFrameReader.ops._
+
+case class Serpent(name: String, speed: Int, stamina: Int)
 
 class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
 
-  case class Serpent(name: String, speed: Int, stamina: Int)
-
   implicit val ArraySeqDFEncoder = new Encoder[ArraySeqDataFrame, Serpent] {
-
     override def encode(df: ArraySeqDataFrame): Seq[Serpent] = {
       (0 until df.data(0).length).map(i => {
         val idx = if (df.index.isEmpty) i.toString else df.index(i)
@@ -26,19 +31,42 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
         Serpent(idx, speed, stamina)
       })
     }
-
   }
 
-  val schema = Schema(Seq(
-    Field("name", StringType, false),
-    Field("speed", IntType, false),
-    Field("stamina", IntType, false)
-  ))
+  implicit val ArraySeqDFDecoder = new Decoder[Serpent, ArraySeqDataFrame] {
+    override def decode(as: Seq[Serpent]): ArraySeqDataFrame = {
+      val cols = ArraySeq("speed", "stamina")
+      val size = as.size
+      var names = new Array[String](size)
+      var speeds = new Array[Int](size)
+      var staminas = new Array[Int](size)
+      as.zipWithIndex.foreach(srpnt => {
+        names(srpnt._2) = srpnt._1.name
+        speeds(srpnt._2) = srpnt._1.speed
+        staminas(srpnt._2) = srpnt._1.stamina
+        ()
+      })
 
+      val index = ArraySeq.from(names)
+      val data: ArraySeq[ArraySeq[_]] = ArraySeq(
+        ArraySeq.from(speeds),
+        ArraySeq.from(staminas)
+      )
+      ArraySeqDataFrame(data, index, cols)
+    }
+  }
+
+  val schema = Schema(
+    Seq(
+      Field("name", StringType, false),
+      Field("speed", IntType, false),
+      Field("stamina", IntType, false)
+    )
+  )
 
   val data = ArraySeq(
-    ArraySeq(1,4,7,10,13,16),
-    ArraySeq(2,5,8,11,14,17)
+    ArraySeq(1, 4, 7, 10, 13, 16),
+    ArraySeq(2, 5, 8, 11, 14, 17)
   )
   val index = ArraySeq(
     "viper",
@@ -52,8 +80,13 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
   val df = ArraySeqDataFrame(data, index, cols)
   val dfNoIndex = ArraySeqDataFrame(data, ArraySeq.empty[String], cols)
   val dfNoCols = ArraySeqDataFrame(data, index, ArraySeq.empty[String])
-  val dfOnlyCols = ArraySeqDataFrame(ArraySeq(ArraySeq()), ArraySeq.empty[String], cols)
-  val nullArraySeqDF = ArraySeqDataFrame(ArraySeq.empty[ArraySeq[Int]], ArraySeq.empty[String], ArraySeq.empty[String])
+  val dfOnlyCols =
+    ArraySeqDataFrame(ArraySeq(ArraySeq()), ArraySeq.empty[String], cols)
+  val nullArraySeqDF = ArraySeqDataFrame(
+    ArraySeq.empty[ArraySeq[Int]],
+    ArraySeq.empty[String],
+    ArraySeq.empty[String]
+  )
 
   val serpents = ArraySeq(
     Serpent("viper", 1, 2),
@@ -74,126 +107,139 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
   )
 
   "Size" should "equal 12" in {
-    DataFrame[ArraySeqDataFrame].size(df) shouldEqual 12
+    df.size shouldEqual 12
   }
 
   "Shape" should "equal (6,2)" in {
-    DataFrame[ArraySeqDataFrame].shape(df) shouldBe (6, 2)
+    df.shape shouldBe (6, 2)
   }
 
   "Head" should "return a Dataframe with the first 5 rows" in {
-    val d = DataFrame[ArraySeqDataFrame].head(df)
+    val d = df.head()
     d.data shouldBe data.take(5)
     d.index shouldBe index.take(5)
     d.columns shouldBe cols.take(5)
   }
 
   "head(2)" should "return a Dataframe with the first 2 rows" in {
-    val d = DataFrame[ArraySeqDataFrame].head(df, 2)
+    val d = df.head(2)
     d.data shouldBe data.take(2)
     d.index shouldBe index.take(2)
     d.columns shouldBe cols.take(2)
   }
 
   "Head of dfNoIndex" should "return a Dataframe with the first 5 rows and an empty index" in {
-    val d = DataFrame[ArraySeqDataFrame].head(dfNoIndex)
+    val d = dfNoIndex.head()
     d.data shouldBe data.take(5)
     d.index shouldBe ArraySeq()
     d.columns shouldBe cols.take(5)
   }
 
   "Head of dfNoCols" should "return a Dataframe with the first 5 rows and a empty column names" in {
-    val d = DataFrame[ArraySeqDataFrame].head(dfNoCols)
+    val d = dfNoCols.head()
     d.data shouldBe data.take(5)
     d.index shouldBe index.take(5)
     d.columns shouldBe ArraySeq()
   }
 
   "Tail" should "return a Dataframe with the last 5 rows" in {
-    val d = DataFrame[ArraySeqDataFrame].tail(df)
+    val d = df.tail()
     d.data shouldBe data.takeRight(5)
     d.index shouldBe index.takeRight(5)
     d.columns shouldBe cols.takeRight(5)
   }
 
   "tail(2)" should "return a Dataframe with the last 2 rows" in {
-    val d = DataFrame[ArraySeqDataFrame].tail(df, 2)
+    val d = df.tail(2)
     d.data shouldBe data.takeRight(2)
     d.index shouldBe index.takeRight(2)
     d.columns shouldBe cols.takeRight(2)
   }
 
   "Tail of dfNoIndex" should "return a Dataframe with the last 5 rows and an empty index" in {
-    val d = DataFrame[ArraySeqDataFrame].tail(dfNoIndex)
+    val d = dfNoIndex.tail()
     d.data shouldBe data.takeRight(5)
     d.index shouldBe ArraySeq()
     d.columns shouldBe cols.takeRight(5)
   }
 
   "Tail of dfNoCols" should "return a Dataframe with the last 5 rows and a empty column names" in {
-    val d = DataFrame[ArraySeqDataFrame].tail(dfNoCols)
+    val d = dfNoCols.tail()
     d.data shouldBe data.takeRight(5)
     d.index shouldBe index.takeRight(5)
     d.columns shouldBe ArraySeq()
   }
 
   "iat(2,1)" should "equal 8" in {
-    DataFrame[ArraySeqDataFrame].iat(df, 2, 1) shouldBe Some(8)
+    df.iat(2, 1) shouldBe Some(8)
   }
 
   "iat(-2,1)" should "equal 14" in {
-    DataFrame[ArraySeqDataFrame].iat(df, -2, 1) shouldBe Some(14)
+    df.iat(-2, 1) shouldBe Some(14)
   }
 
   "iat(2,-1)" should "equal 7" in {
-    DataFrame[ArraySeqDataFrame].iat(df, 2, -1) shouldBe Some(8)
+    df.iat(2, -1) shouldBe Some(8)
   }
 
   "iat(-2,-1)" should "equal 13" in {
-    DataFrame[ArraySeqDataFrame].iat(df, -2, -2) shouldBe Some(13)
+    df.iat(-2, -2) shouldBe Some(13)
   }
 
   "at('viper', 'stamina')" should "equal 2" in {
-    DataFrame[ArraySeqDataFrame].at(df, "viper", "stamina") shouldBe Some(2)
+    df.at("viper", "stamina") shouldBe Some(2)
   }
 
   "at('viper', 'venom')" should "be None" in {
-    DataFrame[ArraySeqDataFrame].at(df, "viper", "venom") shouldBe None
+    df.at("viper", "venom") shouldBe None
   }
 
   "loc('viper')" should "return df's first row" in {
-    DataFrame[ArraySeqDataFrame].loc(df, "viper") shouldBe
-    ArraySeqDataFrame(ArraySeq(ArraySeq(1), ArraySeq(2)), ArraySeq("viper"), cols)
+    df.loc("viper") shouldBe
+      ArraySeqDataFrame(
+        ArraySeq(ArraySeq(1), ArraySeq(2)),
+        ArraySeq("viper"),
+        cols
+      )
   }
 
   "loc('venom')" should "return 'null' dataframe" in {
-    DataFrame[ArraySeqDataFrame].loc(df, "venom") shouldBe nullArraySeqDF
+    df.loc("venom") shouldBe nullArraySeqDF
   }
 
   "loc('viper', 'python')" should "return first and fourth rows" in {
-    DataFrame[ArraySeqDataFrame].loc(df, Seq("viper", "python")) shouldBe
-    ArraySeqDataFrame(ArraySeq(ArraySeq(1, 10), ArraySeq(2, 11)), ArraySeq("viper", "python"), cols)
+    df.loc(Seq("viper", "python")) shouldBe
+      ArraySeqDataFrame(
+        ArraySeq(ArraySeq(1, 10), ArraySeq(2, 11)),
+        ArraySeq("viper", "python"),
+        cols
+      )
   }
 
   "loc('viper', 'venom')" should "return a dataframe with only 'viper' elements" in {
-    DataFrame[ArraySeqDataFrame].loc(df, Seq("viper", "venom")) shouldBe
-    ArraySeqDataFrame(ArraySeq(ArraySeq(1), ArraySeq(2)), ArraySeq("viper"), cols)
+    df.loc(Seq("viper", "venom")) shouldBe
+      ArraySeqDataFrame(
+        ArraySeq(ArraySeq(1), ArraySeq(2)),
+        ArraySeq("viper"),
+        cols
+      )
   }
 
   "loc(true, false, false, true, false, false)" should "return first and fourth rows" in {
-    DataFrame[ArraySeqDataFrame]
-      .loc(df, Seq(true, false, false, true, false, false)) shouldBe
-      ArraySeqDataFrame(ArraySeq(ArraySeq(1, 10), ArraySeq(2, 11)), ArraySeq("viper", "python"), cols)
+    df.loc(Seq(true, false, false, true, false, false)) shouldBe
+      ArraySeqDataFrame(
+        ArraySeq(ArraySeq(1, 10), ArraySeq(2, 11)),
+        ArraySeq("viper", "python"),
+        cols
+      )
   }
 
   "loc(false, false, false, false, false, false)" should "return a dataframe with no rows and only colNames" in {
-    DataFrame[ArraySeqDataFrame]
-      .loc(df, Seq(false, false, false, false, false, false)) shouldBe dfOnlyCols
+    df.loc(Seq(false, false, false, false, false, false)) shouldBe dfOnlyCols
   }
 
   "loc(true, true, true, true, true, true)" should "be the original dataframe" in {
-    DataFrame[ArraySeqDataFrame]
-      .loc(df, Seq(true, true, true, true, true, true)) shouldBe df
+    df.loc(Seq(true, true, true, true, true, true)) shouldBe df
   }
 
   "Encoder" should "encode DataFrame" in {
@@ -205,33 +251,40 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
   }
 
   "to" should "encode DataFrame" in {
-    DataFrame[ArraySeqDataFrame].to(df) shouldBe serpents
+    df.to shouldBe serpents
   }
 
   "to" should "encode DataFrame with no index" in {
-    DataFrame[ArraySeqDataFrame].to(dfNoIndex) shouldBe serpentsNoIndex
+    dfNoIndex.to shouldBe serpentsNoIndex
   }
 
   "insert" should "adds a column at index `loc`" in {
-    val newCol = ArraySeq(13,15,17,19,11,20)
-    val newDF = DataFrame[ArraySeqDataFrame].insert[Column[Int]](df, 1, "sight", newCol, false).getOrElse(nullArraySeqDF)
+    val newCol = ArraySeq(13, 15, 17, 19, 11, 20)
+    val newDF = df
+      .insert[Column[Int]](1, "sight", newCol, false)
+      .getOrElse(nullArraySeqDF)
     newDF.data(1) shouldBe newCol
   }
 
   "empty" should "return true if dataframe is empty" in {
-    DataFrame[ArraySeqDataFrame].empty(nullArraySeqDF) shouldBe true
+    nullArraySeqDF.empty shouldBe true
   }
 
   "empty" should "return false if dataframe is not empty" in {
-    DataFrame[ArraySeqDataFrame].empty(df) shouldBe false
+    df.empty shouldBe false
   }
 
   "get(name)" should "return the dataframe with the `name` label" in {
-    DataFrame[ArraySeqDataFrame].get[String](df, "speed", None) shouldBe ArraySeqDataFrame(ArraySeq(ArraySeq(1,4,7,10,13,16)), index, ArraySeq("speed"))
+    //df.get[String](df, "speed", None) shouldBe ArraySeqDataFrame(ArraySeq(ArraySeq(1,4,7,10,13,16)), index, ArraySeq("speed"))
+    df.get[String]("speed", None) shouldBe ArraySeqDataFrame(
+      ArraySeq(ArraySeq(1, 4, 7, 10, 13, 16)),
+      index,
+      ArraySeq("speed")
+    )
   }
 
   "get(unknown)" should "return the default value" in {
-    DataFrame[ArraySeqDataFrame].get[String](df, "poison", None) shouldBe nullArraySeqDF
+    df.get[String]("poison", None) shouldBe nullArraySeqDF
   }
 
   "items" should "return data in Array[(columnName, Column)] format" in {
@@ -244,17 +297,99 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
 
   "iterrows" should "return sequence of tuples (index, Row) format" in {
     df.iterrows(rowEncoder(schema)) shouldBe Seq(
-      ("viper",Row(Seq(1,2), schema)),
-      ("sidewinder",Row(Seq(4,5), schema)),
-      ("cobra",Row(Seq(7,8), schema)),
-      ("python",Row(Seq(10,11), schema)),
-      ("anaconda",Row(Seq(13,14), schema)),
-      ("yellowbeard",Row(Seq(16,17), schema))
+      ("viper", Row(Seq(1, 2), schema)),
+      ("sidewinder", Row(Seq(4, 5), schema)),
+      ("cobra", Row(Seq(7, 8), schema)),
+      ("python", Row(Seq(10, 11), schema)),
+      ("anaconda", Row(Seq(13, 14), schema)),
+      ("yellowbeard", Row(Seq(16, 17), schema))
     )
   }
 
   "iterrows" should "return empty sequence of tuples for emptyDF" in {
     nullArraySeqDF.iterrows(rowEncoder(schema)) shouldBe Seq()
-
   }
+
+  "decoder" should "return `Serpents` as a Dataframe" in {
+    ArraySeqDFDecoder.decode(serpents) shouldBe df
+  }
+
+  //TODO: Move reader tests to their own suite
+  "DataFrameReader" should "read a CSV file from a String" in {
+    val csv = """name,speed,stamina
+viper,1,2
+sidewinder,4,5
+cobra,7,8
+python,10,11
+anaconda,13,14
+yellowbeard,16,17""".stripMargin
+
+    ArraySeqDataFrameReader.arrayseqDataFrameReader.readCSV(
+      csv,
+      schema,
+      true,
+      "name"
+    ) shouldBe df
+  }
+
+  "DataFrameReader" should "read a CSV file without headers from a String" in {
+    val csv = """viper,1,2
+sidewinder,4,5
+cobra,7,8
+python,10,11
+anaconda,13,14
+yellowbeard,16,17""".stripMargin
+
+    ArraySeqDataFrameReader.arrayseqDataFrameReader.readCSV(
+      csv,
+      schema,
+      false,
+      "name"
+    ) shouldBe df
+  }
+
+  "DataFrameReader" should "read a CSV file from a File" in {
+    ArraySeqDataFrameReader.arrayseqDataFrameReader.readCSV(
+      Paths.get(getClass.getResource("/serpents.csv").getPath()),
+      schema,
+      true,
+      "name"
+    ) shouldBe df
+  }
+
+  "DataFrameReader" should "read a CSV file without headers from a File" in {
+    ArraySeqDataFrameReader.arrayseqDataFrameReader.readCSV(
+      Paths.get(getClass.getResource("/serpentsNoHeaders.csv").getPath()),
+      schema,
+      false,
+      "name"
+    ) shouldBe df
+  }
+
+  val fullData = ArraySeq(
+    index,
+    ArraySeq(1, 4, 7, 10, 13, 16),
+    ArraySeq(2, 5, 8, 11, 14, 17)
+  )
+
+  val dfFullDataNoIndex = ArraySeqDataFrame(fullData, ArraySeq.empty[String], "name" +: cols)
+
+  "DataFrameReader" should "read a CSV file from a File with no index" in {
+    ArraySeqDataFrameReader.arrayseqDataFrameReader.readCSV(
+      Paths.get(getClass.getResource("/serpents.csv").getPath()),
+      schema,
+      true,
+      ""
+    ) shouldBe dfFullDataNoIndex
+  }
+
+  "DataFrameReader" should "read a CSV file with no headers and no index from a File" in {
+    ArraySeqDataFrameReader.arrayseqDataFrameReader.readCSV(
+      Paths.get(getClass.getResource("/serpentsNoHeaders.csv").getPath()),
+      schema,
+      false,
+      ""
+    ) shouldBe dfFullDataNoIndex
+  }
+
 }

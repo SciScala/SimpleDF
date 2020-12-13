@@ -1,11 +1,15 @@
 package org.sciscala.simpledf.arrayseq
 
 import org.sciscala.simpledf._
+import org.sciscala.simpledf.codecs._
 import org.sciscala.simpledf.arrayseq._
 import org.sciscala.simpledf.error._
 import org.sciscala.simpledf.row.Row
 import scala.collection.immutable.ArraySeq
 import scala.reflect.{ClassTag, classTag}
+
+import simulacrum._
+import DataFrame.ops._
 
 case class ArraySeqDataFrame( 
   data: ArraySeq[Column[_]], 
@@ -128,7 +132,7 @@ object ArraySeqDataFrame {
             val filteredIdx = index
               .zip(df.index)
               .collect {
-                case b: (Boolean, String) if (b._1) => b._2
+                case b: (Boolean @unchecked, String @unchecked) if (b._1) => b._2
               }
                 .map(df.index.indexOf(_))
                 val cols =

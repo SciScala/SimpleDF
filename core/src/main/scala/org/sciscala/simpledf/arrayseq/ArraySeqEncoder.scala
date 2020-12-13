@@ -1,7 +1,7 @@
 package org.sciscala.simpledf.arrayseq
 
 import org.sciscala.simpledf.types.Schema
-import org.sciscala.simpledf.Encoder
+import org.sciscala.simpledf.codecs.Encoder
 import org.sciscala.simpledf.row.Row
 
 object ArraySeqEncoder {

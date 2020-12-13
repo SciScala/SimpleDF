@@ -9,11 +9,12 @@ import scala.jdk.CollectionConverters._
 import scala.reflect.{ClassTag, classTag}
 
 import org.sciscala.simpledf._
+import org.sciscala.simpledf.codecs._
 import org.sciscala.simpledf.row.Row
 import org.sciscala.simpledf.error._
 
 
-case class ArrowDataFrame( data: VectorSchemaRoot, index: Seq[String]) {
+case class ArrowDataFrame(data: VectorSchemaRoot, index: Seq[String]) {
 
   val columns: ArraySeq[String] = ArraySeq.from(data.getSchema.getFields.asScala.map(f => f.getName))
 
@@ -145,7 +146,7 @@ object ArrowDataFrame {
           }
           case "boolean" => {
             val filteredIdx: Seq[String] = index.zip(df.index).collect {
-              case b: (Boolean, String) if (b._1) => b._2
+              case b: (Boolean @unchecked, String @unchecked) if (b._1) => b._2
             }
             copyVectorsByIndex(filteredIdx, root, newVectors, df)
           }
