@@ -1,16 +1,16 @@
 import scala.xml.transform.{RewriteRule, RuleTransformer}
 import Dependencies._
 
-ThisBuild / scalaVersion     := "2.13.4"
-ThisBuild / version          := "0.1.0-SNAPSHOT"
-ThisBuild / organization     := "org.sciscala"
+ThisBuild / scalaVersion := "2.13.4"
+ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / organization := "org.sciscala"
 ThisBuild / organizationName := "sciscala"
 
-val commonDeps = scalaTest ++ spire ++ simulacrum
+val commonDeps = csvParser ++ scalaTest ++ spire ++ simulacrum
 
 lazy val root = (project in file("."))
   .aggregate(common, core, arrow)
-  //.settings(settings)
+//.settings(settings)
 
 lazy val common = project.settings(
   name := "common",
@@ -25,8 +25,7 @@ lazy val core = (project in file("core"))
   .settings(
     name := "simpledf-core",
     scalacOptions += "-Ymacro-annotations",
-    resolvers += Resolver.bintrayRepo("zamblauskas", "maven"),
-    libraryDependencies ++= csvParser ++ commonDeps
+    libraryDependencies ++= commonDeps
   )
   .dependsOn(common)
 

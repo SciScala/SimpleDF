@@ -1,5 +1,9 @@
 package org.sciscala.simpledf.arrayseq
 
+import java.io.File
+import java.io.FileReader
+import java.io.Reader
+import java.io.StringReader
 import java.nio.file.Path
 
 import scala.io.Source
@@ -9,20 +13,16 @@ import org.sciscala.simpledf.DataFrameReader
 import org.sciscala.simpledf.DataFrame
 import org.sciscala.simpledf.codecs.Decoder
 
-import java.io.Reader
 import com.opencsv.CSVReader
 import com.opencsv.CSVReaderHeaderAware
 import scala.reflect.{ClassTag, classTag}
 import scala.jdk.CollectionConverters._
-import java.io.StringReader
 import org.sciscala.simpledf.types.Schema
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.Map
 import org.sciscala.simpledf.types._
 import scala.collection.mutable.LinkedHashMap
-import java.io.File
-import java.io.FileReader
 
 object ArraySeqDataFrameReader {
 

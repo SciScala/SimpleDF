@@ -1,4 +1,4 @@
-package org.sciscala.simpledf
+package org.sciscala.simpledf.arrayseq
 
 import java.nio.file.Paths;
 
@@ -8,6 +8,7 @@ import scala.collection.mutable.ListBuffer
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import org.sciscala.simpledf._
 import org.sciscala.simpledf.types._
 import org.sciscala.simpledf.codecs._
 import org.sciscala.simpledf.row.Row
@@ -15,8 +16,8 @@ import org.sciscala.simpledf.arrayseq.ArraySeqEncoder._
 import org.sciscala.simpledf.arrayseq.ArraySeqDataFrame
 import org.sciscala.simpledf.arrayseq.ArraySeqDataFrameReader
 
-import DataFrame.ops._
-import DataFrameReader.ops._
+import org.sciscala.simpledf.DataFrame.ops._
+import org.sciscala.simpledf.DataFrameReader.ops._
 
 case class Serpent(name: String, speed: Int, stamina: Int)
 
