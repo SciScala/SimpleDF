@@ -87,11 +87,11 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
   ): Unit = {
     schemaRoot
       .getVector("speed")
-      .asInstanceOf[UInt4Vector]
+      .asInstanceOf[IntVector]
       .setSafe(idx, serpent.speed)
     schemaRoot
       .getVector("stamina")
-      .asInstanceOf[UInt4Vector]
+      .asInstanceOf[IntVector]
       .setSafe(idx, serpent.stamina)
   }
 
@@ -242,8 +242,8 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     val schema: ASchema = new ASchema(List(speedField).asJava)
     val data: VectorSchemaRoot = VectorSchemaRoot.create(schema, new RootAllocator())
     data.allocateNew()
-    val speedVector: UInt4Vector =
-      data.getVector("speed").asInstanceOf[UInt4Vector]
+    val speedVector: IntVector =
+      data.getVector("speed").asInstanceOf[IntVector]
     speedVector.allocateNew()
     speedVector.setSafe(0, 1) // setSafe checks we don't exceed initialCapacity
     speedVector.setSafe(1, 4)
@@ -288,7 +288,6 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     initData(data)
     val wholeSet = ArrowDataFrame(data, index)
     val res = wholeSet.loc(Seq("viper", "python"))
-    println(expected.data.toString())
     res.data shouldEqual expected.data
     res.index shouldBe expected.index
   }
@@ -368,8 +367,8 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     val df = ArrowDataFrame(data, index)
 
     //df.data.allocateNew()
-    val poisonVector: UInt4Vector =
-      data.getVector("poison").asInstanceOf[UInt4Vector]
+    val poisonVector: IntVector =
+      data.getVector("poison").asInstanceOf[IntVector]
     poisonVector.setSafe(0, 1) // setSafe checks we don't exceed initialCapacity
     poisonVector.setSafe(1, 4)
     poisonVector.setSafe(2, 7)
@@ -378,7 +377,7 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     poisonVector.setSafe(5, 16)
 
     val newDF = df
-      .insert[UInt4Vector](1, "poison", poisonVector, false)
+      .insert[IntVector](1, "poison", poisonVector, false)
       .getOrElse(emptyInstance)
     newDF.data.getVector("poison") shouldBe poisonVector
   }
