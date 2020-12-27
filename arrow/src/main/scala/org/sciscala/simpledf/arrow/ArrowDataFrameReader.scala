@@ -1,10 +1,7 @@
 package org.sciscala.simpledf.arrow
 
 import java.nio.file.Path
-import java.io.File
-import java.io.FileInputStream
-import java.io.Reader
-import java.io.StringReader
+import java.io.{File, FileInputStream, FileReader, Reader, StringReader}
 
 import org.apache.arrow.vector.ipc.SeekableReadChannel
 import org.apache.arrow.vector.ipc.ArrowFileReader
@@ -23,26 +20,16 @@ import com.opencsv.CSVReaderHeaderAware
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.Map
-import org.apache.arrow.vector.types.pojo.{
-  ArrowType,
-  FieldType,
-  Field => AField,
-  Schema => ASchema
-}
+import org.apache.arrow.vector.types.pojo.{ArrowType, FieldType, Field => AField, Schema => ASchema}
 import org.sciscala.simpledf.types._
-import org.apache.arrow.vector.{
-  BigIntVector,
-  BitVector,
-  IntVector,
-  VarCharVector
-}
+import org.apache.arrow.vector.{BigIntVector, BitVector, IntVector, VarCharVector}
 import org.apache.arrow.vector.util.Text
 
 object ArrowDataFrameReader {
 
-  def convertSchema(schema: Schema, indexColumnName: String): ASchema = {
+  def convertSchema(schema: Schema, indexColumnName: Option[String]): ASchema = {
     val fields: Seq[AField] = schema.fields
-      .filter(_.name != indexColumnName)
+      .filter(_.name != indexColumnName.getOrElse(""))
       .map(f => {
         val aType = f.dtype match {
           case IntType =>
@@ -88,7 +75,7 @@ object ArrowDataFrameReader {
       private def processCSVWithHeaders(
           reader: Reader,
           schema: Schema,
-          indexColumnName: String
+          indexColumnName: Option[String]
       ): (VectorSchemaRoot, ArrayBuffer[String]) = {
         var as: Map[String, ArrayBuffer[_]] =
           LinkedHashMap.empty[String, ArrayBuffer[_]]
@@ -182,8 +169,16 @@ object ArrowDataFrameReader {
             }
           })
         data.setRowCount(as.head._2.size)
-        val index = as.getOrElse(indexColumnName, ArrayBuffer.empty[String]).map(_.toString)
+        val index = as.getOrElse(indexColumnName.getOrElse(""), ArrayBuffer.empty[String]).map(_.toString)
         (data, index)
+      }
+
+      private def processCSVPositions(
+          reader: Reader,
+          schema: Schema,
+          columns: ArraySeq[String]
+      ): (VectorSchemaRoot, ArrayBuffer[String]) = {
+        ???
       }
 
       private def processCSV(
@@ -191,12 +186,10 @@ object ArrowDataFrameReader {
           schema: Schema,
           columns: ArraySeq[String],
           isFirstRowHeaders: Boolean,
-          indexColumName: String
+          indexColumName: Option[String]
       ): ArrowDataFrame = {
-        val (data, index) =
-          processCSVWithHeaders(reader, schema, indexColumName)
-        //else
-        //processCSVPositions(reader, schema, columns)
+        val (data, index) = if (isFirstRowHeaders) processCSVWithHeaders(reader, schema, indexColumName)
+        else processCSVPositions(reader, schema, columns)
         /*val index = ArraySeq
           .from(as.getOrElse(indexColumName, ArrayBuffer.empty[String]))
           .map(_.asInstanceOf[String])*/
@@ -207,14 +200,18 @@ object ArrowDataFrameReader {
           filepath: Path,
           schema: Schema,
           isFirstRowHeaders: Boolean,
-          indexColumnName: String = ""
-      ): ArrowDataFrame = ???
+          indexColumnName: Option[String]
+      ): ArrowDataFrame = {
+        val reader = new FileReader(filepath.toFile())
+        val columns = ArraySeq.from(schema.fieldNames)
+        processCSV(reader, schema, columns, isFirstRowHeaders, indexColumnName)
+      }
 
       override def readCSV(
           csv: String,
           schema: Schema,
           isFirstRowHeaders: Boolean,
-          indexColumnName: String
+          indexColumnName: Option[String]
       ): ArrowDataFrame = {
         val reader = new StringReader(csv)
         val columns = ArraySeq.from(schema.fieldNames)

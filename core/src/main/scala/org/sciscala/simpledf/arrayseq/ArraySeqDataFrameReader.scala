@@ -44,7 +44,7 @@ object ArraySeqDataFrameReader {
           implicit D: Decoder[A, ArraySeqDataFrame]
       ): ArraySeqDataFrame = ???
 
-      private def processCSVWithHeaders[A](reader: Reader, schema: Schema, columns: ArraySeq[String]): Map[String, ArrayBuffer[_]] = {
+      private def processCSVWithHeaders[A](reader: Reader, schema: Schema): Map[String, ArrayBuffer[_]] = {
         var as: Map[String, ArrayBuffer[_]] = LinkedHashMap.empty[String, ArrayBuffer[_]]
         val csvReader = new CSVReaderHeaderAware(reader)
         var tmp = csvReader.readMap()
@@ -84,7 +84,7 @@ object ArraySeqDataFrameReader {
         as
       }
 
-      private def processCSVPositions[A](reader: Reader, schema: Schema, columns: ArraySeq[String]): Map[String, ArrayBuffer[_]] = {
+      private def processCSVPositions[A](reader: Reader, schema: Schema): Map[String, ArrayBuffer[_]] = {
         var as: Map[String, ArrayBuffer[_]] = LinkedHashMap.empty[String, ArrayBuffer[_]]
         val csvReader = new CSVReader(reader)
         var tmp = csvReader.readNext()
@@ -125,22 +125,24 @@ object ArraySeqDataFrameReader {
         as
       }
 
-      private def processCSV(reader: Reader, schema: Schema, columns: ArraySeq[String], firstRowIsHeaders: Boolean, indexColumName: String): ArraySeqDataFrame = {
+      private def processCSV(reader: Reader, schema: Schema, columns: ArraySeq[String],
+                             firstRowIsHeaders: Boolean, indexColumName: Option[String]): ArraySeqDataFrame = {
         val as: Map[String, ArrayBuffer[_]] =
           if (firstRowIsHeaders)
-            processCSVWithHeaders(reader, schema, columns)
+            processCSVWithHeaders(reader, schema)
           else
-            processCSVPositions(reader, schema, columns)
-        val index = ArraySeq.from(as.getOrElse(indexColumName, ArrayBuffer.empty[String])).map(_.asInstanceOf[String])
-        val data = ArraySeq.from(as.filter(m => m._1 != indexColumName).map(m => ArraySeq.from(m._2)))
-        ArraySeqDataFrame(data, index, columns.filter(_ != indexColumName))
+            processCSVPositions(reader, schema)
+        val indexCol = indexColumName.getOrElse("")
+        val index = ArraySeq.from(as.getOrElse(indexCol, ArrayBuffer.empty[String])).map(_.asInstanceOf[String])
+        val data = ArraySeq.from(as.filter(m => m._1 != indexCol).map(m => ArraySeq.from(m._2)))
+        ArraySeqDataFrame(data, index, columns.filter(_ != indexCol))
       }
 
       override def readCSV(
           csv: String,
           schema: Schema,
           firstRowIsHeaders: Boolean,
-          indexColumnName: String = ""
+          indexColumnName: Option[String]
       ): ArraySeqDataFrame = {
         val reader = new StringReader(csv)
         val columns = ArraySeq.from(schema.fieldNames)
@@ -151,7 +153,7 @@ object ArraySeqDataFrameReader {
           filepath: Path,
           schema: Schema,
           firstRowIsHeaders: Boolean,
-          indexColumnName: String
+          indexColumnName: Option[String]
       ): ArraySeqDataFrame = {
         val reader = new FileReader(filepath.toFile())
         val columns = ArraySeq.from(schema.fieldNames)

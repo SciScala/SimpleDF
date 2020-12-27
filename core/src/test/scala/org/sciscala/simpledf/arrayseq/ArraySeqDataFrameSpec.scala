@@ -329,7 +329,7 @@ yellowbeard,16,17""".stripMargin
       csv,
       schema,
       true,
-      "name"
+      Some("name")
     ) shouldBe df
   }
 
@@ -345,7 +345,7 @@ yellowbeard,16,17""".stripMargin
       csv,
       schema,
       false,
-      "name"
+      Some("name")
     ) shouldBe df
   }
 
@@ -354,7 +354,7 @@ yellowbeard,16,17""".stripMargin
       Paths.get(getClass.getResource("/serpents.csv").getPath()),
       schema,
       true,
-      "name"
+      Some("name")
     ) shouldBe df
   }
 
@@ -363,7 +363,7 @@ yellowbeard,16,17""".stripMargin
       Paths.get(getClass.getResource("/serpentsNoHeaders.csv").getPath()),
       schema,
       false,
-      "name"
+      Some("name")
     ) shouldBe df
   }
 
@@ -380,7 +380,7 @@ yellowbeard,16,17""".stripMargin
       Paths.get(getClass.getResource("/serpents.csv").getPath()),
       schema,
       true,
-      ""
+      None
     ) shouldBe dfFullDataNoIndex
   }
 
@@ -389,7 +389,7 @@ yellowbeard,16,17""".stripMargin
       Paths.get(getClass.getResource("/serpentsNoHeaders.csv").getPath()),
       schema,
       false,
-      ""
+      None
     ) shouldBe dfFullDataNoIndex
   }
 

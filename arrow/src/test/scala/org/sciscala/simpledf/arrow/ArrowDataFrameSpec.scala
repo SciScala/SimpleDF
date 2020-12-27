@@ -436,7 +436,7 @@ yellowbeard,16,17""".stripMargin
       csv,
       serpentSchema,
       true,
-      "name"
+      Some("name")
     )
     root.data shouldEqual df.data
     root.columns shouldBe df.columns
