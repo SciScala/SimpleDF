@@ -1,6 +1,6 @@
 package org.sciscala.simpledf.arrayseq
 
-import java.nio.file.Paths;
+import java.nio.file.Paths
 
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable.ListBuffer
@@ -11,6 +11,7 @@ import org.scalatest.matchers.should.Matchers
 import org.sciscala.simpledf._
 import org.sciscala.simpledf.types._
 import org.sciscala.simpledf.codecs._
+import org.sciscala.simpledf.arrayseq.utils._
 import org.sciscala.simpledf.row.Row
 import org.sciscala.simpledf.arrayseq.ArraySeqEncoder._
 import org.sciscala.simpledf.arrayseq.ArraySeqDataFrame
@@ -56,56 +57,6 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
       ArraySeqDataFrame(data, index, cols)
     }
   }
-
-  val schema = Schema(
-    Seq(
-      Field("name", StringType, false),
-      Field("speed", IntType, false),
-      Field("stamina", IntType, false)
-    )
-  )
-
-  val data = ArraySeq(
-    ArraySeq(1, 4, 7, 10, 13, 16),
-    ArraySeq(2, 5, 8, 11, 14, 17)
-  )
-  val index = ArraySeq(
-    "viper",
-    "sidewinder",
-    "cobra",
-    "python",
-    "anaconda",
-    "yellowbeard"
-  )
-  val cols = ArraySeq("speed", "stamina")
-  val df = ArraySeqDataFrame(data, index, cols)
-  val dfNoIndex = ArraySeqDataFrame(data, ArraySeq.empty[String], cols)
-  val dfNoCols = ArraySeqDataFrame(data, index, ArraySeq.empty[String])
-  val dfOnlyCols =
-    ArraySeqDataFrame(ArraySeq(ArraySeq()), ArraySeq.empty[String], cols)
-  val nullArraySeqDF = ArraySeqDataFrame(
-    ArraySeq.empty[ArraySeq[Int]],
-    ArraySeq.empty[String],
-    ArraySeq.empty[String]
-  )
-
-  val serpents = ArraySeq(
-    Serpent("viper", 1, 2),
-    Serpent("sidewinder", 4, 5),
-    Serpent("cobra", 7, 8),
-    Serpent("python", 10, 11),
-    Serpent("anaconda", 13, 14),
-    Serpent("yellowbeard", 16, 17)
-  )
-
-  val serpentsNoIndex = ArraySeq(
-    Serpent("0", 1, 2),
-    Serpent("1", 4, 5),
-    Serpent("2", 7, 8),
-    Serpent("3", 10, 11),
-    Serpent("4", 13, 14),
-    Serpent("5", 16, 17)
-  )
 
   "Size" should "equal 12" in {
     df.size shouldEqual 12
@@ -314,83 +265,4 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
   "decoder" should "return `Serpents` as a Dataframe" in {
     ArraySeqDFDecoder.decode(serpents) shouldBe df
   }
-
-  //TODO: Move reader tests to their own suite
-  "DataFrameReader" should "read a CSV file from a String" in {
-    val csv = """name,speed,stamina
-viper,1,2
-sidewinder,4,5
-cobra,7,8
-python,10,11
-anaconda,13,14
-yellowbeard,16,17""".stripMargin
-
-    ArraySeqDataFrameReader.arrayseqDataFrameReader.readCSV(
-      csv,
-      schema,
-      true,
-      Some("name")
-    ) shouldBe df
-  }
-
-  "DataFrameReader" should "read a CSV file without headers from a String" in {
-    val csv = """viper,1,2
-sidewinder,4,5
-cobra,7,8
-python,10,11
-anaconda,13,14
-yellowbeard,16,17""".stripMargin
-
-    ArraySeqDataFrameReader.arrayseqDataFrameReader.readCSV(
-      csv,
-      schema,
-      false,
-      Some("name")
-    ) shouldBe df
-  }
-
-  "DataFrameReader" should "read a CSV file from a File" in {
-    ArraySeqDataFrameReader.arrayseqDataFrameReader.readCSV(
-      Paths.get(getClass.getResource("/serpents.csv").getPath()),
-      schema,
-      true,
-      Some("name")
-    ) shouldBe df
-  }
-
-  "DataFrameReader" should "read a CSV file without headers from a File" in {
-    ArraySeqDataFrameReader.arrayseqDataFrameReader.readCSV(
-      Paths.get(getClass.getResource("/serpentsNoHeaders.csv").getPath()),
-      schema,
-      false,
-      Some("name")
-    ) shouldBe df
-  }
-
-  val fullData = ArraySeq(
-    index,
-    ArraySeq(1, 4, 7, 10, 13, 16),
-    ArraySeq(2, 5, 8, 11, 14, 17)
-  )
-
-  val dfFullDataNoIndex = ArraySeqDataFrame(fullData, ArraySeq.empty[String], "name" +: cols)
-
-  "DataFrameReader" should "read a CSV file from a File with no index" in {
-    ArraySeqDataFrameReader.arrayseqDataFrameReader.readCSV(
-      Paths.get(getClass.getResource("/serpents.csv").getPath()),
-      schema,
-      true,
-      None
-    ) shouldBe dfFullDataNoIndex
-  }
-
-  "DataFrameReader" should "read a CSV file with no headers and no index from a File" in {
-    ArraySeqDataFrameReader.arrayseqDataFrameReader.readCSV(
-      Paths.get(getClass.getResource("/serpentsNoHeaders.csv").getPath()),
-      schema,
-      false,
-      None
-    ) shouldBe dfFullDataNoIndex
-  }
-
 }

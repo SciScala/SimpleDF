@@ -43,5 +43,7 @@ scalacOptions ++= Seq(
   "-unchecked",
   "-language:postfixOps",
   "-language:higherKinds",
-  "-Ymacro-annotations"
+  "-Ymacro-annotations",
+  "-Ywarn-unused-import",
+  "-Wvalue-discard",
 )

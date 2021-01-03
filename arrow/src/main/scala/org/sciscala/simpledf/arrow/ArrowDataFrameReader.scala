@@ -1,29 +1,20 @@
 package org.sciscala.simpledf.arrow
 
-import java.nio.file.Path
-import java.io.{File, FileInputStream, FileReader, Reader, StringReader}
-
-import org.apache.arrow.vector.ipc.SeekableReadChannel
-import org.apache.arrow.vector.ipc.ArrowFileReader
+import com.opencsv.{CSVReader, CSVReaderHeaderAware}
 import org.apache.arrow.memory.RootAllocator
-import org.apache.arrow.vector.VectorSchemaRoot
-import org.apache.arrow.vector.FieldVector
-
-import scala.jdk.CollectionConverters._
-import scala.collection.mutable.LinkedHashMap
-import org.sciscala.simpledf.{DataFrame, DataFrameReader, IsSupported}
-import org.sciscala.simpledf.codecs._
-import org.sciscala.simpledf.types.Schema
-import com.opencsv.CSVReader
-import com.opencsv.CSVReaderHeaderAware
-
-import scala.collection.immutable.ArraySeq
-import scala.collection.mutable.ArrayBuffer
-import scala.collection.mutable.Map
+import org.apache.arrow.vector._
 import org.apache.arrow.vector.types.pojo.{ArrowType, FieldType, Field => AField, Schema => ASchema}
-import org.sciscala.simpledf.types._
-import org.apache.arrow.vector.{BigIntVector, BitVector, IntVector, VarCharVector}
 import org.apache.arrow.vector.util.Text
+import org.sciscala.simpledf.DataFrameReader
+import org.sciscala.simpledf.codecs._
+import org.sciscala.simpledf.types.{Schema, _}
+
+import java.io._
+import java.nio.file.Path
+import scala.collection.immutable.ArraySeq
+import scala.collection.mutable
+import scala.collection.mutable.{ArrayBuffer, LinkedHashMap, Map}
+import scala.jdk.CollectionConverters._
 
 object ArrowDataFrameReader {
 
@@ -41,28 +32,7 @@ object ArrowDataFrameReader {
         }
         new AField(f.name, aType, null)
       })
-    val its = fields.toIterable
-    new ASchema(its.asJava)
-  }
-
-  private def read(filepath: Path): ArrowDataFrame = {
-    val arrowFile: File = new File(filepath.toUri())
-    val fileInputStream: FileInputStream = new FileInputStream(arrowFile)
-    val seekableReadChannel: SeekableReadChannel = new SeekableReadChannel(
-      fileInputStream.getChannel()
-    )
-    val arrowFileReader: ArrowFileReader = new ArrowFileReader(
-      seekableReadChannel,
-      new RootAllocator(Integer.MAX_VALUE)
-    )
-    val root: VectorSchemaRoot = arrowFileReader.getVectorSchemaRoot()
-    /*
-    val schema: Schema = root.getSchema()
-    val arrowBlocks: List[ArrowBlock] = arrowFileReader.getRecordBlocks().asScala.toList
-     */
-    val fieldVectorNames: List[String] =
-      root.getFieldVectors().asScala.toList.map(_.getName())
-    ArrowDataFrame(root, fieldVectorNames)
+    new ASchema(fields.asJava)
   }
 
   implicit val arrowDataFrameReader: DataFrameReader[ArrowDataFrame] =
@@ -77,8 +47,8 @@ object ArrowDataFrameReader {
           schema: Schema,
           indexColumnName: Option[String]
       ): (VectorSchemaRoot, ArrayBuffer[String]) = {
-        var as: Map[String, ArrayBuffer[_]] =
-          LinkedHashMap.empty[String, ArrayBuffer[_]]
+        val as: mutable.Map[String, ArrayBuffer[_]] =
+          mutable.LinkedHashMap.empty[String, ArrayBuffer[_]]
         val csvReader = new CSVReaderHeaderAware(reader)
         var tmp = csvReader.readMap()
 
@@ -111,64 +81,7 @@ object ArrowDataFrameReader {
           tmp = csvReader.readMap()
         }
 
-        val data: VectorSchemaRoot =
-          VectorSchemaRoot.create(
-            convertSchema(schema, indexColumnName),
-            new RootAllocator()
-          )
-        data.allocateNew()
-        data
-          .getFieldVectors()
-          .iterator()
-          .forEachRemaining(fv => {
-            val field = fv.getField()
-            val name = field.getName()
-
-            field.getFieldType().getType() match {
-              case i: ArrowType.Int if i.getBitWidth == 32 => {
-                val v = data.getVector(name).asInstanceOf[IntVector]
-                v.allocateNew()
-                val ab = as.getOrElse(name, ArrayBuffer.empty[Int])
-                ab.zipWithIndex
-                  .foreach(tpl => {
-                    v.setSafe(tpl._2, tpl._1.asInstanceOf[Int])
-                  })
-                v.setValueCount(ab.size)
-              }
-              case i: ArrowType.Int if i.getBitWidth == 64 => {
-                val v = data.getVector(name).asInstanceOf[BigIntVector]
-                v.allocateNew()
-                val ab = as.getOrElse(name, ArrayBuffer.empty[Long])
-                ab.zipWithIndex
-                  .foreach(tpl => {
-                    v.setSafe(tpl._2, tpl._1.asInstanceOf[Long])
-                  })
-                v.setValueCount(ab.size)
-              }
-              case i: ArrowType.Bool => {
-                val v = data.getVector(name).asInstanceOf[BitVector]
-                v.allocateNew()
-                val ab = as.getOrElse(name, ArrayBuffer.empty[Boolean])
-                ab.zipWithIndex
-                  .foreach(tpl => {
-                    val b = if (tpl._1.asInstanceOf[Boolean]) 1 else 0
-                    v.setSafe(tpl._2, b)
-                  })
-                v.setValueCount(ab.size)
-              }
-              case i: ArrowType.Utf8 => {
-                val ab = as.getOrElse(name, ArrayBuffer.empty[String])
-                val v = data.getVector(name).asInstanceOf[VarCharVector]
-                v.allocateNew()
-                ab.zipWithIndex
-                  .foreach(tpl => {
-                    v.setSafe(tpl._2, new Text(tpl._1.asInstanceOf[String]))
-                  })
-                v.setValueCount(ab.size)
-              }
-            }
-          })
-        data.setRowCount(as.head._2.size)
+        val data: VectorSchemaRoot = buildVectorSchemaRoot(schema, indexColumnName, as)
         val index = as.getOrElse(indexColumnName.getOrElse(""), ArrayBuffer.empty[String]).map(_.toString)
         (data, index)
       }
@@ -176,9 +89,50 @@ object ArrowDataFrameReader {
       private def processCSVPositions(
           reader: Reader,
           schema: Schema,
-          columns: ArraySeq[String]
+          columns: ArraySeq[String],
+          indexColumName: Option[String]
       ): (VectorSchemaRoot, ArrayBuffer[String]) = {
-        ???
+        var as: mutable.Map[String, ArrayBuffer[_]] = LinkedHashMap.empty[String, ArrayBuffer[_]]
+        val csvReader = new CSVReader(reader)
+        var tmp = csvReader.readNext()
+        while (tmp != null) {
+          schema.fields.zip(tmp)
+          .map{ case (f,c) => {
+            val colName = f.name
+            as.update(colName, f.dtype match {
+              case IntType =>
+                as.getOrElse(colName, {
+                  val ab = ArrayBuffer.empty[Int]
+                  as += colName -> ab
+                  ab
+                }) :+ c.toInt
+              case LongType =>
+                as.getOrElse(colName, {
+                  val ab = ArrayBuffer.empty[Long]
+                  as += colName -> ab
+                  ab
+                }) :+ c.toLong
+              case BooleanType =>
+                as.getOrElse(colName, {
+                  val ab = ArrayBuffer.empty[Boolean]
+                  as += colName -> ab
+                  ab
+                }) :+ c.toBoolean
+              case StringType =>
+                as.getOrElse(colName, {
+                  val ab = ArrayBuffer.empty[String]
+                  as += colName -> ab
+                  ab
+                }) :+ c
+              // TODO add Double and BigDecimal
+            })
+          }}
+          tmp = csvReader.readNext()
+        }
+
+        val data: VectorSchemaRoot = buildVectorSchemaRoot(schema, indexColumName, as)
+        val index = as.getOrElse(indexColumName.getOrElse(""), ArrayBuffer.empty[String]).map(_.toString)
+        (data, index)
       }
 
       private def processCSV(
@@ -189,7 +143,7 @@ object ArrowDataFrameReader {
           indexColumName: Option[String]
       ): ArrowDataFrame = {
         val (data, index) = if (isFirstRowHeaders) processCSVWithHeaders(reader, schema, indexColumName)
-        else processCSVPositions(reader, schema, columns)
+        else processCSVPositions(reader, schema, columns, indexColumName)
         /*val index = ArraySeq
           .from(as.getOrElse(indexColumName, ArrayBuffer.empty[String]))
           .map(_.asInstanceOf[String])*/
@@ -204,7 +158,9 @@ object ArrowDataFrameReader {
       ): ArrowDataFrame = {
         val reader = new FileReader(filepath.toFile())
         val columns = ArraySeq.from(schema.fieldNames)
-        processCSV(reader, schema, columns, isFirstRowHeaders, indexColumnName)
+        val (data, index) = if (isFirstRowHeaders) processCSVWithHeaders(reader, schema, indexColumnName)
+        else processCSVPositions(reader, schema, columns, indexColumnName)
+        ArrowDataFrame(data, ArraySeq.from(index))
       }
 
       override def readCSV(
@@ -222,6 +178,67 @@ object ArrowDataFrameReader {
 
     }
 
+  private def buildVectorSchemaRoot(schema: Schema, indexColumnName: Option[String], as: mutable.Map[String, ArrayBuffer[_]]): VectorSchemaRoot = {
+    val data: VectorSchemaRoot =
+      VectorSchemaRoot.create(
+        convertSchema(schema, indexColumnName),
+        new RootAllocator()
+      )
+    data.allocateNew()
+    data
+      .getFieldVectors
+      .iterator()
+      .forEachRemaining(fv => {
+        val field = fv.getField
+        val name = field.getName
+
+        field.getFieldType.getType match {
+          case i: ArrowType.Int if i.getBitWidth == 32 =>
+            val v = data.getVector(name).asInstanceOf[IntVector]
+            v.allocateNew()
+            val ab = as.getOrElse(name, ArrayBuffer.empty[Int])
+            ab.zipWithIndex
+              .foreach(tpl => {
+                v.setSafe(tpl._2, tpl._1.asInstanceOf[Int])
+              })
+            v.setValueCount(ab.size)
+
+          case i: ArrowType.Int if i.getBitWidth == 64 =>
+            val v = data.getVector(name).asInstanceOf[BigIntVector]
+            v.allocateNew()
+            val ab = as.getOrElse(name, ArrayBuffer.empty[Long])
+            ab.zipWithIndex
+              .foreach(tpl => {
+                v.setSafe(tpl._2, tpl._1.asInstanceOf[Long])
+              })
+            v.setValueCount(ab.size)
+
+          case i: ArrowType.Bool =>
+            val v = data.getVector(name).asInstanceOf[BitVector]
+            v.allocateNew()
+            val ab = as.getOrElse(name, ArrayBuffer.empty[Boolean])
+            ab.zipWithIndex
+              .foreach(tpl => {
+                val b = if (tpl._1.asInstanceOf[Boolean]) 1 else 0
+                v.setSafe(tpl._2, b)
+              })
+            v.setValueCount(ab.size)
+
+          case i: ArrowType.Utf8 =>
+            val ab = as.getOrElse(name, ArrayBuffer.empty[String])
+            val v = data.getVector(name).asInstanceOf[VarCharVector]
+            v.allocateNew()
+            ab.zipWithIndex
+              .foreach(tpl => {
+                v.setSafe(tpl._2, new Text(tpl._1.asInstanceOf[String]))
+              })
+            v.setValueCount(ab.size)
+
+        }
+      })
+    data.setRowCount(as.head._2.size)
+    data
+  }
 }
 
 // required when using reflection, like `using` does
