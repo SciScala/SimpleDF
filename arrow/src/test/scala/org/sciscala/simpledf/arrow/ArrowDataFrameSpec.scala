@@ -3,15 +3,19 @@ package org.sciscala.simpledf.arrow
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import org.apache.arrow.vector.{FieldVector, UInt4Vector, VectorSchemaRoot}
+import org.apache.arrow.vector.{FieldVector, IntVector, UInt4Vector, VectorSchemaRoot}
 import org.apache.arrow.memory.RootAllocator
 import org.apache.arrow.vector.complex.reader.FieldReader
-import org.apache.arrow.vector.types.pojo._
+import org.apache.arrow.vector.types.pojo.{
+  Schema => ASchema,
+  FieldType,
+  ArrowType,
+  Field => AField
+}
 
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable.{Seq => MSeq}
 import scala.jdk.CollectionConverters._
-import org.sciscala.simpledf.arrow._
 import org.scalactic.Equality
 
 import scala.collection.mutable.ListBuffer
@@ -20,157 +24,16 @@ import simulacrum._
 import org.sciscala.simpledf._
 import org.sciscala.simpledf.DataFrame.ops._
 import org.sciscala.simpledf.codecs._
+import org.sciscala.simpledf.types._
 import org.sciscala.simpledf.arrow.ArrowDataFrame
 import org.sciscala.simpledf.arrow.ArrowDataFrame._
 import org.sciscala.simpledf.arrow.ArrowEncoder._
 import org.sciscala.simpledf.arrow.implicits._
+import org.sciscala.simpledf.arrow.utils._
 
 import scala.languageFeature.postfixOps
 
 class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
-
-  case class Serpent(name: String, speed: Int, stamina: Int)
-
-  implicit val arrowDFEncoder = new Encoder[ArrowDataFrame, Serpent] {
-
-    override def encode(df: ArrowDataFrame): Seq[Serpent] = {
-      var collector = new ListBuffer[Serpent]()
-      val fvs: MSeq[FieldReader] =
-        df.data.getFieldVectors.asScala.map(fv => fv.getReader)
-      for (i <- 1 to df.data.getRowCount) {
-        val index = i - 1
-        val name =
-          if (df.index.indices.contains(index)) df.index(index)
-          else index.toString
-        collector += Serpent(
-          name,
-          { fvs(0).setPosition(index); fvs(0).readInteger() },
-          { fvs(1).setPosition(index); fvs(1).readInteger() }
-        )
-      }
-      collector.toSeq
-    }
-
-  }
-
-
-  implicit val schemaRootDataFrame: Equality[VectorSchemaRoot] =
-    (a: VectorSchemaRoot, b: Any) => b match {
-      case root: VectorSchemaRoot =>
-        a.equals(root)
-      case _ => false
-    }
-
-  implicit val fieldVectorDataFrame: Equality[FieldVector] =
-    (a: FieldVector, b: Any) => b match {
-      case field: FieldVector =>
-        a.getField.equals(field) &&
-          a.asScala.zip(field.asScala).foldLeft(true)( (acc,c) => acc && (c._1 == c._2))
-      case _ => false
-    }
-
-  val intType = new FieldType(false, new ArrowType.Int(32, false), null)
-  val speedField = new Field("speed", intType, null)
-  val staminaField = new Field("stamina", intType, null)
-  val schemaFields = List(speedField, staminaField)
-  val schema: Schema = new Schema(schemaFields.asJava)
-
-  private def vectorizeSerpent(
-      idx: Int,
-      serpent: Serpent,
-      schemaRoot: VectorSchemaRoot
-  ): Unit = {
-    schemaRoot
-      .getVector("speed")
-      .asInstanceOf[UInt4Vector]
-      .setSafe(idx, serpent.speed)
-    schemaRoot
-      .getVector("stamina")
-      .asInstanceOf[UInt4Vector]
-      .setSafe(idx, serpent.stamina)
-  }
-
-  private def serpents2DF(
-      serpents: Seq[Serpent],
-      schemaRoot: VectorSchemaRoot
-  ): ArrowDataFrame = {
-    val index = serpents.zipWithIndex
-      .map(t => {
-        vectorizeSerpent(t._2, t._1, schemaRoot)
-        t._1.name
-      })
-    schemaRoot.setRowCount(serpents.length)
-
-    ArrowDataFrame(schemaRoot, ArraySeq.from(index))
-  }
-
-  private def initData(data: VectorSchemaRoot): Unit = {
-    data.clear()
-    data.allocateNew()
-    val speedVector: UInt4Vector =
-      data.getVector("speed").asInstanceOf[UInt4Vector]
-    speedVector.allocateNew()
-    speedVector.setSafe(0, 1) // setSafe checks we don't exceed initialCapacity
-    speedVector.setSafe(1, 4)
-    speedVector.setSafe(2, 7)
-    speedVector.setSafe(3, 10)
-    speedVector.setSafe(4, 13)
-    speedVector.setSafe(5, 16)
-    speedVector.setValueCount(6)
-
-    val staminaVector: UInt4Vector =
-      data.getVector("stamina").asInstanceOf[UInt4Vector]
-    staminaVector.allocateNew()
-    staminaVector.setSafe(
-      0,
-      2
-    ) // setSafe checks we don't exceed initialCapacity
-    staminaVector.setSafe(1, 5)
-    staminaVector.setSafe(2, 8)
-    staminaVector.setSafe(3, 11)
-    staminaVector.setSafe(4, 14)
-    staminaVector.setSafe(5, 17)
-    staminaVector.setValueCount(6)
-    data.setRowCount(6)
-  }
-
-  val index: Seq[String] = ArraySeq(
-    "viper",
-    "sidewinder",
-    "cobra",
-    "python",
-    "anaconda",
-    "yellowbeard"
-  )
-
-  val cols: Seq[String] =
-    ArraySeq.from(schema.getFields.asScala.map(f => f.getName))
-
-  val serpents: Seq[Any] = List(
-    Serpent("viper", 1, 2),
-    Serpent("sidewinder", 4, 5),
-    Serpent("cobra", 7, 8),
-    Serpent("python", 10, 11),
-    Serpent("anaconda", 13, 14),
-    Serpent("yellowbeard", 16, 17)
-  )
-
-  //serpents.zipWithIndex.foreach(t => vectorizeSerpent(t._2, t._1, data))
-  val data: VectorSchemaRoot =
-    VectorSchemaRoot.create(schema, new RootAllocator())
-  initData(data)
-  val df = ArrowDataFrame(data, index)
-
-  val dfNoIndex = ArrowDataFrame(data, ArraySeq.empty[String])
-
-  val serpentsNoIndex = List(
-    Serpent("0", 1, 2),
-    Serpent("1", 4, 5),
-    Serpent("2", 7, 8),
-    Serpent("3", 10, 11),
-    Serpent("4", 13, 14),
-    Serpent("5", 16, 17)
-  )
 
   "Size" should "equal 12" in {
     df.size shouldEqual 12
@@ -226,11 +89,11 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
   }
 
   "get(name)" should "return the dataframe with the `name` label" in {
-    val schema: Schema = new Schema(List(speedField).asJava)
+    val schema: ASchema = new ASchema(List(speedField).asJava)
     val data: VectorSchemaRoot = VectorSchemaRoot.create(schema, new RootAllocator())
     data.allocateNew()
-    val speedVector: UInt4Vector =
-      data.getVector("speed").asInstanceOf[UInt4Vector]
+    val speedVector: IntVector =
+      data.getVector("speed").asInstanceOf[IntVector]
     speedVector.allocateNew()
     speedVector.setSafe(0, 1) // setSafe checks we don't exceed initialCapacity
     speedVector.setSafe(1, 4)
@@ -275,7 +138,6 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     initData(data)
     val wholeSet = ArrowDataFrame(data, index)
     val res = wholeSet.loc(Seq("viper", "python"))
-    println(expected.data.toString())
     res.data shouldEqual expected.data
     res.index shouldBe expected.index
   }
@@ -348,15 +210,15 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
   }
 
   "insert" should "adds a column at index `loc`" in {
-    val poisonField = new Field("poison", intType, null)
+    val poisonField = new AField("poison", intType, null)
     val schemaFields = List(speedField, staminaField, poisonField)
-    val schema: Schema = new Schema(schemaFields.asJava)
+    val schema: ASchema = new ASchema(schemaFields.asJava)
     val data: VectorSchemaRoot = VectorSchemaRoot.create(schema, new RootAllocator())
     val df = ArrowDataFrame(data, index)
 
     //df.data.allocateNew()
-    val poisonVector: UInt4Vector =
-      data.getVector("poison").asInstanceOf[UInt4Vector]
+    val poisonVector: IntVector =
+      data.getVector("poison").asInstanceOf[IntVector]
     poisonVector.setSafe(0, 1) // setSafe checks we don't exceed initialCapacity
     poisonVector.setSafe(1, 4)
     poisonVector.setSafe(2, 7)
@@ -365,7 +227,7 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     poisonVector.setSafe(5, 16)
 
     val newDF = df
-      .insert[UInt4Vector](1, "poison", poisonVector, false)
+      .insert[IntVector](1, "poison", poisonVector, false)
       .getOrElse(emptyInstance)
     newDF.data.getVector("poison") shouldBe poisonVector
   }
@@ -397,8 +259,6 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
       ("anaconda",Row(Seq(13,14), dfSchema)),
       ("yellowbeard",Row(Seq(16,17), dfSchema))
     )
-
-
   }
 
   "iterrows" should "return empty sequence of tuples for emptyDF" in {
@@ -412,4 +272,25 @@ class ArrowDataFrameSpec extends AnyFlatSpec with Matchers {
     implicit val rowEncoder: Encoder[ArrowDataFrame, Row] = arrowRowEncoder(dfSchema)
     emptyInstance.iterrows shouldBe Seq()
   }
+
+  "DataFrameReader" should "read a CSV file from a String" in {
+    val csv = """name,speed,stamina
+viper,1,2
+sidewinder,4,5
+cobra,7,8
+python,10,11
+anaconda,13,14
+yellowbeard,16,17""".stripMargin
+
+    val root = ArrowDataFrameReader.arrowDataFrameReader.readCSV(
+      csv,
+      serpentSchema,
+      true,
+      Some("name")
+    )
+    root.data shouldEqual df.data
+    root.columns shouldBe df.columns
+    root.index shouldBe df.index
+  }
+
 }

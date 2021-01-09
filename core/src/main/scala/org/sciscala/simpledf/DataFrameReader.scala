@@ -10,9 +10,9 @@ import org.sciscala.simpledf.types.Schema
 
   def readJson[A <: Serializable](filepath: Path)(implicit D: Decoder[A, DFRImpl]): DFRImpl
 
-  def readCSV(filepath: Path, schema: Schema, isFirstRowHeaders: Boolean, indexColumnName: String): DFRImpl
+  def readCSV(filepath: Path, schema: Schema, isFirstRowHeaders: Boolean, indexColumnName: Option[String]): DFRImpl
 
-  def readCSV(csv: String, schema:Schema, isFirstRowHeaders: Boolean, indexColumnName: String): DFRImpl
+  def readCSV(csv: String, schema:Schema, isFirstRowHeaders: Boolean, indexColumnName: Option[String]): DFRImpl
 
   def readParquet(filepath: Path): DFRImpl
 
