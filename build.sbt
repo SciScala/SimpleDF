@@ -6,7 +6,7 @@ ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / organization := "org.sciscala"
 ThisBuild / organizationName := "sciscala"
 
-val commonDeps = csvParser ++ scalaTest ++ spire ++ simulacrum
+val commonDeps = csvParser ++ scalaTest ++ spire ++ simulacrum ++ parser
 
 lazy val root = (project in file("."))
   .aggregate(common, core, arrow)
@@ -44,6 +44,6 @@ scalacOptions ++= Seq(
   "-language:postfixOps",
   "-language:higherKinds",
   "-Ymacro-annotations",
-  "-Ywarn-unused-import",
+  //"-Ywarn-unused-import",
   "-Wvalue-discard",
 )

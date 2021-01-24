@@ -24,12 +24,14 @@ import scala.collection.mutable.Map
 import org.sciscala.simpledf.types._
 import scala.collection.mutable.LinkedHashMap
 
+import java.nio.file.Files
+
 object ArraySeqDataFrameReader {
 
   implicit val arrayseqDataFrameReader: DataFrameReader[ArraySeqDataFrame] =
     new DataFrameReader[ArraySeqDataFrame] {
 
-      private def readFile(filepath: Path): BufferedSource =
+      /*private def readFile(filepath: Path): BufferedSource =
         Source.fromFile(filepath.toFile())
 
       private def readFileLines(filepath: Path): Iterator[String] =
@@ -38,11 +40,11 @@ object ArraySeqDataFrameReader {
       private def readFileString(filepath: Path, headers: Boolean): String = {
         if (headers) readFileLines(filepath).toList.tail.mkString
         else readFile(filepath).mkString
-      }
+      }*/
 
       override def readJson[A <: Serializable](filepath: Path)(
           implicit D: Decoder[A, ArraySeqDataFrame]
-      ): ArraySeqDataFrame = ???
+      ): ArraySeqDataFrame = null
 
       private def processCSVWithHeaders[A](reader: Reader, schema: Schema): Map[String, ArrayBuffer[_]] = {
         var as: Map[String, ArrayBuffer[_]] = LinkedHashMap.empty[String, ArrayBuffer[_]]

@@ -12,4 +12,10 @@ object Dependencies {
     "com.opencsv" %  "opencsv"       % "5.3",
     "zamblauskas" % "scala-csv-parser_2.12" % "0.11.6"
   )
+  lazy val parser =  Seq(
+    "com.lihaoyi" %% "fastparse" % "2.2.2"
+    //"com.lihaoyi" %% "upickle" % "0.9.5"
+    //"com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core"   % "2.6.2",
+    //"com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.6.2" % "compile-internal"
+  )
 }
