@@ -6,7 +6,7 @@ ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / organization := "org.sciscala"
 ThisBuild / organizationName := "sciscala"
 
-val commonDeps = csvParser ++ scalaTest ++ spire ++ simulacrum ++ parser
+val commonDeps = csvParser ++ scalaTest ++ spire ++ simulacrum ++ json
 
 lazy val root = (project in file("."))
   .aggregate(common, core, arrow)

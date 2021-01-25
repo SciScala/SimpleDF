@@ -5,26 +5,26 @@ import java.io.FileReader
 import java.io.Reader
 import java.io.StringReader
 import java.nio.file.Path
-
 import scala.io.Source
 import scala.io.BufferedSource
-
 import org.sciscala.simpledf.DataFrameReader
 import org.sciscala.simpledf.DataFrame
 import org.sciscala.simpledf.codecs.Decoder
-
 import com.opencsv.CSVReader
 import com.opencsv.CSVReaderHeaderAware
+
 import scala.reflect.{ClassTag, classTag}
 import scala.jdk.CollectionConverters._
 import org.sciscala.simpledf.types.Schema
+
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.Map
 import org.sciscala.simpledf.types._
-import scala.collection.mutable.LinkedHashMap
 
+import scala.collection.mutable.LinkedHashMap
 import java.nio.file.Files
+import scala.collection.mutable
 
 object ArraySeqDataFrameReader {
 
@@ -46,12 +46,12 @@ object ArraySeqDataFrameReader {
           implicit D: Decoder[A, ArraySeqDataFrame]
       ): ArraySeqDataFrame = null
 
-      private def processCSVWithHeaders[A](reader: Reader, schema: Schema): Map[String, ArrayBuffer[_]] = {
-        var as: Map[String, ArrayBuffer[_]] = LinkedHashMap.empty[String, ArrayBuffer[_]]
+      private def processCSVWithHeaders[A](reader: Reader, schema: Schema): mutable.Map[String, ArrayBuffer[_]] = {
+        var as: mutable.Map[String, ArrayBuffer[_]] = mutable.LinkedHashMap.empty[String, ArrayBuffer[_]]
         val csvReader = new CSVReaderHeaderAware(reader)
         var tmp = csvReader.readMap()
         while (tmp != null) {
-          schema.fields.map(f => {
+          schema.fields.foreach(f => {
             val colName = f.name
             as.update(colName, f.dtype match {
               case IntType =>
@@ -86,13 +86,13 @@ object ArraySeqDataFrameReader {
         as
       }
 
-      private def processCSVPositions[A](reader: Reader, schema: Schema): Map[String, ArrayBuffer[_]] = {
-        var as: Map[String, ArrayBuffer[_]] = LinkedHashMap.empty[String, ArrayBuffer[_]]
+      private def processCSVPositions[A](reader: Reader, schema: Schema): mutable.Map[String, ArrayBuffer[_]] = {
+        var as: mutable.Map[String, ArrayBuffer[_]] = mutable.LinkedHashMap.empty[String, ArrayBuffer[_]]
         val csvReader = new CSVReader(reader)
         var tmp = csvReader.readNext()
         while (tmp != null) {
           schema.fields.zip(tmp)
-          .map{ case (f,c) => {
+          .foreach{ case (f,c) =>
             val colName = f.name
             as.update(colName, f.dtype match {
               case IntType =>
@@ -121,7 +121,7 @@ object ArraySeqDataFrameReader {
                 }) :+ c
               // TODO add Double and BigDecimal
             })
-          }}
+          }
           tmp = csvReader.readNext()
         }
         as
@@ -129,7 +129,7 @@ object ArraySeqDataFrameReader {
 
       private def processCSV(reader: Reader, schema: Schema, columns: ArraySeq[String],
                              firstRowIsHeaders: Boolean, indexColumName: Option[String]): ArraySeqDataFrame = {
-        val as: Map[String, ArrayBuffer[_]] =
+        val as: mutable.Map[String, ArrayBuffer[_]] =
           if (firstRowIsHeaders)
             processCSVWithHeaders(reader, schema)
           else
@@ -157,7 +157,7 @@ object ArraySeqDataFrameReader {
           firstRowIsHeaders: Boolean,
           indexColumnName: Option[String]
       ): ArraySeqDataFrame = {
-        val reader = new FileReader(filepath.toFile())
+        val reader = new FileReader(filepath.toFile)
         val columns = ArraySeq.from(schema.fieldNames)
         processCSV(reader, schema, columns, firstRowIsHeaders, indexColumnName)
       }

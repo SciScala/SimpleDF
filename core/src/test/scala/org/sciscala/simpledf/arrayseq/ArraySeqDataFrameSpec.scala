@@ -24,38 +24,34 @@ case class Serpent(name: String, speed: Int, stamina: Int)
 
 class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
 
-  implicit val ArraySeqDFEncoder = new Encoder[ArraySeqDataFrame, Serpent] {
-    override def encode(df: ArraySeqDataFrame): Seq[Serpent] = {
-      (0 until df.data(0).length).map(i => {
-        val idx = if (df.index.isEmpty) i.toString else df.index(i)
-        val speed = df.data(0)(i).asInstanceOf[Int]
-        val stamina = df.data(1)(i).asInstanceOf[Int]
-        Serpent(idx, speed, stamina)
-      })
-    }
+  implicit val arraySeqDFEncoder: Encoder[ArraySeqDataFrame, Serpent] = (df: ArraySeqDataFrame) => {
+    df.data(0).indices.map(i => {
+      val idx = if (df.index.isEmpty) i.toString else df.index(i)
+      val speed = df.data(0)(i).asInstanceOf[Int]
+      val stamina = df.data(1)(i).asInstanceOf[Int]
+      Serpent(idx, speed, stamina)
+    })
   }
 
-  implicit val ArraySeqDFDecoder = new Decoder[Serpent, ArraySeqDataFrame] {
-    override def decode(as: Seq[Serpent]): ArraySeqDataFrame = {
-      val cols = ArraySeq("speed", "stamina")
-      val size = as.size
-      var names = new Array[String](size)
-      var speeds = new Array[Int](size)
-      var staminas = new Array[Int](size)
-      as.zipWithIndex.foreach(srpnt => {
-        names(srpnt._2) = srpnt._1.name
-        speeds(srpnt._2) = srpnt._1.speed
-        staminas(srpnt._2) = srpnt._1.stamina
-        ()
-      })
+  implicit val arraySeqDFDecoder: Decoder[Serpent, ArraySeqDataFrame] = (as: Seq[Serpent]) => {
+    val cols = ArraySeq("speed", "stamina")
+    val size = as.size
+    var names = new Array[String](size)
+    var speeds = new Array[Int](size)
+    var staminas = new Array[Int](size)
+    as.zipWithIndex.foreach(srpnt => {
+      names(srpnt._2) = srpnt._1.name
+      speeds(srpnt._2) = srpnt._1.speed
+      staminas(srpnt._2) = srpnt._1.stamina
+      ()
+    })
 
-      val index = ArraySeq.from(names)
-      val data: ArraySeq[ArraySeq[_]] = ArraySeq(
-        ArraySeq.from(speeds),
-        ArraySeq.from(staminas)
-      )
-      ArraySeqDataFrame(data, index, cols)
-    }
+    val index = ArraySeq.from(names)
+    val data: ArraySeq[ArraySeq[_]] = ArraySeq(
+      ArraySeq.from(speeds),
+      ArraySeq.from(staminas)
+    )
+    ArraySeqDataFrame(data, index, cols)
   }
 
   "Size" should "equal 12" in {
@@ -195,11 +191,11 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
   }
 
   "Encoder" should "encode DataFrame" in {
-    ArraySeqDFEncoder.encode(df) shouldBe serpents
+    arraySeqDFEncoder.encode(df) shouldBe serpents
   }
 
   "Encoder" should "encode DataFrame with no index" in {
-    ArraySeqDFEncoder.encode(dfNoIndex) shouldBe serpentsNoIndex
+    arraySeqDFEncoder.encode(dfNoIndex) shouldBe serpentsNoIndex
   }
 
   "to" should "encode DataFrame" in {
@@ -263,6 +259,6 @@ class ArraySeqDataFrameSpec extends AnyFlatSpec with Matchers {
   }
 
   "decoder" should "return `Serpents` as a Dataframe" in {
-    ArraySeqDFDecoder.decode(serpents) shouldBe df
+    arraySeqDFDecoder.decode(serpents) shouldBe df
   }
 }

@@ -13,7 +13,7 @@ import java.io._
 import java.nio.file.Path
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
-import scala.collection.mutable.{ArrayBuffer, LinkedHashMap, Map}
+import scala.collection.mutable.{ArrayBuffer, Map}
 import scala.jdk.CollectionConverters._
 
 object ArrowDataFrameReader {
@@ -53,7 +53,7 @@ object ArrowDataFrameReader {
         var tmp = csvReader.readMap()
 
         while (tmp != null) {
-          schema.fields.map(f => {
+          schema.fields.foreach(f => {
             val colName = f.name
             as.update(
               colName,
@@ -92,12 +92,12 @@ object ArrowDataFrameReader {
           columns: ArraySeq[String],
           indexColumName: Option[String]
       ): (VectorSchemaRoot, ArrayBuffer[String]) = {
-        var as: mutable.Map[String, ArrayBuffer[_]] = LinkedHashMap.empty[String, ArrayBuffer[_]]
+        var as: mutable.Map[String, ArrayBuffer[_]] = mutable.LinkedHashMap.empty[String, ArrayBuffer[_]]
         val csvReader = new CSVReader(reader)
         var tmp = csvReader.readNext()
         while (tmp != null) {
           schema.fields.zip(tmp)
-          .map{ case (f,c) => {
+          .foreach{ case (f,c) => {
             val colName = f.name
             as.update(colName, f.dtype match {
               case IntType =>
