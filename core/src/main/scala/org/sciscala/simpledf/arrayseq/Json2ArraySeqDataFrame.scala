@@ -44,7 +44,7 @@ object Json2ArraySeqDataFrame extends App {
         ArraySeqDataFrame(data, ArraySeq.empty[String], cols)
       }
       case Some((key, value)) => {
-        var cols: ArraySeq[String] =
+        val cols: ArraySeq[String] =
           ArraySeq.from(src.map(_._1._1).filter(_ != key))
         val lm = value.value
           .asInstanceOf[MLinkedHashMap[String, ujson.Value.Value]]
@@ -72,9 +72,7 @@ object Json2ArraySeqDataFrame extends App {
     arr.foreach(obj =>
       obj.value.zipWithIndex.foreach(tup => {
         val idx = tup._2
-        if (!df.isDefinedAt(idx)) {
-          df = df.appended(MArraySeq.empty[tup._1._2.type])
-        }
+        if (!df.isDefinedAt(idx)) df = df.appended(MArraySeq.empty[tup._1._2.type])
         df.update(idx, df(idx).appended(tup._1._2.value))
       })
     )
