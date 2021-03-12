@@ -40,6 +40,10 @@ object ArraySeqDataFrameReader {
       private def readFileString(filepath: Path, headers: Boolean): String = {
         if (headers) readFileLines(filepath).toList.tail.mkString
         else readFile(filepath).mkString
+       }*/
+
+      /*def readJson[A <: Serializable](filePath: Path): ArraySeqDataFrame = {
+
       }*/
 
       override def readJson[A <: Serializable](filepath: Path)(

@@ -71,9 +71,9 @@ yellowbeard,16,17""".stripMargin
       false,
       Some("name")
     )
-    root.data shouldEqual df.data
     root.columns shouldBe df.columns
     root.index shouldBe df.index
+    root.data.contentToTSVString shouldEqual df.data.contentToTSVString()
   }
 
   /*val fullData = ArraySeq(
