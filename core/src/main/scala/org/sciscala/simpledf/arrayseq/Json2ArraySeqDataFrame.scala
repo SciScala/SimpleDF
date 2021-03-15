@@ -1,29 +1,20 @@
 package org.sciscala.simpledf.arrayseq
 
 import ujson.Value.Value
-import ujson.read
+import ujson.{Arr, Bool, False, Null, Num, Obj, Str, True, read}
 
 import scala.collection.immutable.ArraySeq
-import scala.collection.mutable.{
-  ArrayBuffer,
-  LinkedHashMap => MLinkedHashMap,
-  ArraySeq => MArraySeq
-}
-import ujson.Str
-import ujson.Obj
-import ujson.Arr
-import ujson.Num
-import ujson.False
-import ujson.True
+import scala.collection.mutable
+import scala.collection.mutable.{ArrayBuffer, ArraySeq => MArraySeq, LinkedHashMap => MLinkedHashMap}
 
-object Json2ArraySeqDataFrame {
+private[arrayseq] object Json2ArraySeqDataFrame {
 
-  def processObj(
+  private def processObj(
       obj: MLinkedHashMap[String, ujson.Value.Value]
   ): ArraySeqDataFrame = {
     var df: MArraySeq[MArraySeq[_]] =
       MArraySeq.empty[MArraySeq[_]]
-    val src = obj.zipWithIndex
+    val src: mutable.Iterable[((String, Value), Int)] = obj.zipWithIndex
     val indexCol: Option[(String, Value)] =
       obj.find(t => t._2.getClass.getName == "ujson.Obj")
 
@@ -43,7 +34,14 @@ object Json2ArraySeqDataFrame {
           case _          => df
         }
       }
-      df.update(idx, df(idx).appended(cell._1._2.value))
+      df.update(idx, cell._1._2 match {
+        case Str(value) => df(idx).appended(value)
+        case Obj(value) => df(idx).appended(value)
+        case Arr(value) => df(idx).appended(value)
+        case Num(value) => df(idx).appended(value)
+        case bool: Bool => df(idx).appended(bool)
+        case Null => df(idx)
+      })
     }
 
     indexCol match {
@@ -62,7 +60,14 @@ object Json2ArraySeqDataFrame {
         val lm = value.value
           .asInstanceOf[MLinkedHashMap[String, ujson.Value.Value]]
         val index = ArraySeq.from(lm.keySet)
-        val indexValues = ArraySeq.from(lm.values)
+        val indexValues = ArraySeq.from(lm.values.map {
+          case Str(value) => value
+          case Obj(value) => value
+          case Arr(value) => value
+          case Num(value) => value
+          case bool: Bool => bool
+          case Null => null
+        })
         src.filter(tup => tup._1._1 != key).foreach(fillData)
         val data = ArraySeq.from(
           indexValues +: df.map(arr =>
@@ -74,7 +79,7 @@ object Json2ArraySeqDataFrame {
     }
   }
 
-  def processArr(
+  private def processArr(
       arr: ArrayBuffer[ujson.Obj]
   ): ArraySeqDataFrame = {
     var df: MArraySeq[MArraySeq[_]] =
@@ -92,17 +97,24 @@ object Json2ArraySeqDataFrame {
             case Num(value) => df.appended(MArraySeq.empty[Double])
             case False      => df.appended(MArraySeq.empty[Boolean])
             case True       => df.appended(MArraySeq.empty[Boolean])
-            case Obj(value) => df.appended(MArraySeq.empty[String])
-            case Arr(value) => df.appended(MArraySeq.empty[Array[String]])
+            //case Obj(value) => df.appended(MArraySeq.empty[String])
+            //case Arr(value) => df.appended(MArraySeq.empty[Array[String]])
             case ujson.Null => df.appended(MArraySeq.empty[String])
             case _          => df
           }
-        df.update(idx, df(idx).appended(tup._1._2.value))
+        df.update(idx, df(idx).appended(tup._1._2 match {
+          case Str(value) => value
+          case Obj(value) => value
+          case Arr(value) => value
+          case Num(value) => value
+          case bool: Bool => bool.value
+          case Null => null
+        }))
       })
     )
 
     val data = ArraySeq.from(
-      df.map(arr => ArraySeq.from(arr.toIterable))
+      df.map(arry => ArraySeq.from(arry.toIterable))
     )
 
     ArraySeqDataFrame(data, ArraySeq.empty[String], cols)

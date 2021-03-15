@@ -1,6 +1,7 @@
 package org.sciscala
 
 import scala.collection.immutable.ArraySeq
+import scala.reflect.ClassTag
 
 package object simpledf {
 

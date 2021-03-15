@@ -49,7 +49,7 @@ object utils {
   )
   val jsonData = ArraySeq(
     ArraySeq("123", "245", "678"),
-    ArraySeq(12, 15, 10),
+    ArraySeq(12.0, 15.0, 10.0),
     ArraySeq(true, false, false)
   )
   val jsonCols = ArraySeq("omg", "wtf", "right")

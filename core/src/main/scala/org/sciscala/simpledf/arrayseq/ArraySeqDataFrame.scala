@@ -12,10 +12,10 @@ import simulacrum._
 import DataFrame.ops._
 
 case class ArraySeqDataFrame( 
-  data: ArraySeq[Column[_]], 
+  data: ArraySeq[Column[_]],
   index: ArraySeq[String], 
   columns: ArraySeq[String]) {
-  val shape: (Int, Int) = (if (this.data.length > 0) this.data(0).size else 0, this.data.length)
+  val shape: (Int, Int) = (if (this.data.nonEmpty) this.data.head.size else 0, this.data.length)
 }
 
 object ArraySeqDataFrame {
@@ -176,7 +176,6 @@ object ArraySeqDataFrame {
 
       def iterrows(df: ArraySeqDataFrame)(implicit encoder: Encoder[ArraySeqDataFrame, Row]): Seq[(String, Row)] = 
         encoder.encode(df).zip(index(df)).map(_.swap)
-
     }
   }
 

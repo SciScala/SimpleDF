@@ -44,6 +44,9 @@ scalacOptions ++= Seq(
   "-language:postfixOps",
   "-language:higherKinds",
   "-Ymacro-annotations",
-  //"-Ywarn-unused-import",
+  //"-Ypartial-unification",
+  "-Ywarn-unused-import",
   "-Wvalue-discard",
 )
+
+//addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full)
