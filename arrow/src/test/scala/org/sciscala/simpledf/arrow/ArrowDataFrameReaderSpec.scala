@@ -76,37 +76,10 @@ yellowbeard,16,17""".stripMargin
     root.data.contentToTSVString shouldEqual df.data.contentToTSVString()
   }
 
-  /*val fullData = ArraySeq(
-    index,
-    ArraySeq(1, 4, 7, 10, 13, 16),
-    ArraySeq(2, 5, 8, 11, 14, 17)
-  )
+  "DataFrameReader" should "read a Json with a simple Object from a String" in {
+    val simpleObj = """{"omg": "123", "wtf": 12, "right": true}"""
+    val parsed = ArrowDataFrameReader.arrowDataFrameReader.readJson(simpleObj, Some(jsonSchema))
 
-  val indexVector: VarCharVector = data.getVector()
-    "viper",
-    "sidewinder",
-    "cobra",
-    "python",
-    "anaconda",
-    "yellowbeard"
-
-  val dfFullDataNoIndex = ArrowDataFrame(fullData, ArraySeq.empty[String])
-
-  "DataFrameReader" should "read a CSV file from a File with no index" in {
-    ArrowDataFrameReader.arrowDataFrameReader.readCSV(
-      Paths.get(getClass.getResource("/serpents.csv").getPath()),
-      serpentSchema,
-      true,
-      None
-    ) shouldBe dfFullDataNoIndex
   }
 
-  "DataFrameReader" should "read a CSV file with no headers and no index from a File" in {
-    ArrowDataFrameReader.arrowDataFrameReader.readCSV(
-      Paths.get(getClass.getResource("/serpentsNoHeaders.csv").getPath()),
-      serpentSchema,
-      false,
-      None
-    ) shouldBe dfFullDataNoIndex
-  }*/
 }

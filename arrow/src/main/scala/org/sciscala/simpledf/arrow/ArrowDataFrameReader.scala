@@ -27,6 +27,8 @@ object ArrowDataFrameReader {
             new FieldType(false, new ArrowType.Int(32, true), null)
           case LongType =>
             new FieldType(false, new ArrowType.Int(64, true), null)
+          case DoubleType =>
+            new FieldType(false, new ArrowType.Decimal(5, 2), null)
           case BooleanType => new FieldType(false, new ArrowType.Bool(), null)
           case StringType  => new FieldType(false, new ArrowType.Utf8(), null)
         }
@@ -38,9 +40,12 @@ object ArrowDataFrameReader {
   implicit val arrowDataFrameReader: DataFrameReader[ArrowDataFrame] =
     new DataFrameReader[ArrowDataFrame] {
 
-      override def readJson[A <: Serializable](filepath: Path)(
-          implicit D: Decoder[A, ArrowDataFrame]
-      ): ArrowDataFrame = ???
+      override def readJson(filepath: Path, schema: Option[Schema]): ArrowDataFrame = ???
+
+      override def readJson(jsonString: String, schema: Option[Schema]): ArrowDataFrame = schema match {
+        case Some(sc) => Json2ArrowDataFrame.processJsonString(jsonString, sc)
+        case None => ArrowDataFrame.emptyInstance
+      }
 
       private def processCSVWithHeaders(
           reader: Reader,
@@ -144,9 +149,6 @@ object ArrowDataFrameReader {
       ): ArrowDataFrame = {
         val (data, index) = if (isFirstRowHeaders) processCSVWithHeaders(reader, schema, indexColumName)
         else processCSVPositions(reader, schema, columns, indexColumName)
-        /*val index = ArraySeq
-          .from(as.getOrElse(indexColumName, ArrayBuffer.empty[String]))
-          .map(_.asInstanceOf[String])*/
         ArrowDataFrame(data, ArraySeq.from(index))
       }
 
@@ -156,7 +158,7 @@ object ArrowDataFrameReader {
           isFirstRowHeaders: Boolean,
           indexColumnName: Option[String]
       ): ArrowDataFrame = {
-        val reader = new FileReader(filepath.toFile())
+        val reader = new FileReader(filepath.toFile)
         val columns = ArraySeq.from(schema.fieldNames)
         val (data, index) = if (isFirstRowHeaders) processCSVWithHeaders(reader, schema, indexColumnName)
         else processCSVPositions(reader, schema, columns, indexColumnName)

@@ -22,5 +22,5 @@ case class Schema(fields: Seq[Field]) {
 
   def treeString: String = fields.map(f => s"${f.name} : ${f.dtype.alias} (nullable : ${f.nullable})").mkString("\n")
 
-  def printSchema: Unit = println("root\n" + treeString.map("|-" + _))
+  def printSchema(): Unit = println("root\n" + treeString.map("|-" + _))
 }

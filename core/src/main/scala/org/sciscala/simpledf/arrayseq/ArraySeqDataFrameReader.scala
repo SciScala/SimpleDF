@@ -32,7 +32,7 @@ object ArraySeqDataFrameReader {
     new DataFrameReader[ArraySeqDataFrame] {
 
       private def readFile(filepath: Path): BufferedSource =
-        Source.fromFile(filepath.toFile())
+        Source.fromFile(filepath.toFile)
 
       private def readFileLines(filepath: Path): Iterator[String] =
         readFile(filepath).getLines()
@@ -42,9 +42,9 @@ object ArraySeqDataFrameReader {
         else readFile(filepath).mkString
        }
 
-      override def readJson(filepath: Path): ArraySeqDataFrame = Json2ArraySeqDataFrame.processJsonString(readFileString(filepath, false))
+      override def readJson(filepath: Path, schema: Option[Schema]): ArraySeqDataFrame = Json2ArraySeqDataFrame.processJsonString(readFileString(filepath, false))
 
-      override def readJson(jsonString: String): ArraySeqDataFrame = Json2ArraySeqDataFrame.processJsonString(jsonString)
+      override def readJson(jsonString: String, schema: Option[Schema]): ArraySeqDataFrame = Json2ArraySeqDataFrame.processJsonString(jsonString)
 
       private def processCSVWithHeaders[A](reader: Reader, schema: Schema): mutable.Map[String, ArrayBuffer[_]] = {
         var as: mutable.Map[String, ArrayBuffer[_]] = mutable.LinkedHashMap.empty[String, ArrayBuffer[_]]
