@@ -27,6 +27,7 @@ object utils {
     "anaconda",
     "yellowbeard"
   )
+
   val cols = ArraySeq("speed", "stamina")
   val df = ArraySeqDataFrame(data, index, cols)
   val dfNoIndex = ArraySeqDataFrame(data, ArraySeq.empty[String], cols)
@@ -38,6 +39,21 @@ object utils {
     ArraySeq.empty[String],
     ArraySeq.empty[String]
   )
+
+  val jsonSchema = Schema(
+    Seq(
+      Field("omg", StringType, false),
+      Field("wtf", IntType, false),
+      Field("right", StringType, false)
+    )
+  )
+  val jsonData = ArraySeq(
+    ArraySeq("123", "245", "678"),
+    ArraySeq(12.0, 15.0, 10.0),
+    ArraySeq(true, false, false)
+  )
+  val jsonCols = ArraySeq("omg", "wtf", "right")
+  val jsonDf = ArraySeqDataFrame(jsonData, ArraySeq.empty[String], jsonCols)
 
   val serpents = ArraySeq(
     Serpent("viper", 1, 2),

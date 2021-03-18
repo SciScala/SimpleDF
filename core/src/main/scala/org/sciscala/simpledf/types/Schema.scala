@@ -3,7 +3,7 @@ package org.sciscala.simpledf.types
 import org.sciscala.simpledf.types.dtype
 import org.sciscala.simpledf.error._
 
-case class Field(name: String, dtype: dtype, nullable: Boolean) 
+case class Field(name: String, dtype: dtype, nullable: Boolean, floatingPointPrecision: Option[Int] = None, floatingPointScale: Option[Int] = None)
 
 case class Schema(fields: Seq[Field]) {
 
@@ -22,5 +22,5 @@ case class Schema(fields: Seq[Field]) {
 
   def treeString: String = fields.map(f => s"${f.name} : ${f.dtype.alias} (nullable : ${f.nullable})").mkString("\n")
 
-  def printSchema: Unit = println("root\n" + treeString.map("|-" + _))
+  def printSchema(): Unit = println("root\n" + treeString.map("|-" + _))
 }

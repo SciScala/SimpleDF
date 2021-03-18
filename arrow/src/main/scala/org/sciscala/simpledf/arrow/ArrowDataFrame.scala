@@ -45,7 +45,7 @@ object ArrowDataFrame {
     ArrowDataFrame(root, indexes)
   }
 
-  val emptyInstance = ArrowDataFrame( VectorSchemaRoot.of(Array.empty[FieldVector]: _*), ArraySeq.empty[String])
+  val emptyInstance: ArrowDataFrame = ArrowDataFrame( VectorSchemaRoot.of(Array.empty[FieldVector]: _*), ArraySeq.empty[String])
 
   val dfInstance: DataFrame[ArrowDataFrame] = new DataFrame[ArrowDataFrame] {
 
@@ -70,7 +70,7 @@ object ArrowDataFrame {
         }
       }
 
-      def empty(df: ArrowDataFrame): Boolean = df.data.getRowCount() == 0
+      def empty(df: ArrowDataFrame): Boolean = df.data.getRowCount == 0
 
       def columns(df: ArrowDataFrame): Seq[String] = df.columns
 
@@ -111,7 +111,7 @@ object ArrowDataFrame {
       def insert[A]( df: ArrowDataFrame, loc: Coord, col: Label, value: A, allow_duplicates: Boolean): Either[Error, ArrowDataFrame] =
         if (loc < 0) {
           Left(InsertError("Column index must be 0 or greater"))
-        } else if (loc > df.data.getFieldVectors().size()) {
+        } else if (loc > df.data.getFieldVectors.size()) {
           Left(InsertError("Column index is bigger than maximum size"))
         } else {
           Right(

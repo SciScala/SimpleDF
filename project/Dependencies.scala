@@ -12,4 +12,7 @@ object Dependencies {
     "com.opencsv" %  "opencsv"       % "5.3",
     "zamblauskas" % "scala-csv-parser_2.12" % "0.11.6"
   )
+  lazy val json =  Seq(
+    "com.lihaoyi" %% "ujson" % "0.9.5"
+  )
 }

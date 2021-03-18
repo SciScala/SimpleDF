@@ -8,7 +8,9 @@ import org.sciscala.simpledf.types.Schema
 
 @typeclass trait DataFrameReader[DFRImpl] {
 
-  def readJson[A <: Serializable](filepath: Path)(implicit D: Decoder[A, DFRImpl]): DFRImpl
+  def readJson(filepath: Path, schema: Option[Schema]): DFRImpl
+
+  def readJson(jsonString: String, schema: Option[Schema]): DFRImpl
 
   def readCSV(filepath: Path, schema: Schema, isFirstRowHeaders: Boolean, indexColumnName: Option[String]): DFRImpl
 

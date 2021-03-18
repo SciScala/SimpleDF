@@ -57,8 +57,8 @@ object utils {
   implicit val fieldVectorDataFrame: Equality[FieldVector] =
     (a: FieldVector, b: Any) => b match {
       case field: FieldVector =>
-        a.getField.equals(field) &&
-          a.asScala.zip(field.asScala).foldLeft(true)( (acc,c) => acc && (c._1 == c._2))
+        a.getField == field &&
+          a.asScala.zip(field.asScala).forall(c => c._1 == c._2)
       case _ => false
     }
 
@@ -156,13 +156,30 @@ object utils {
     )
   )
 
+  val jsonSchema = Schema(
+    Seq(
+      Field("omg", StringType, false),
+      Field("wtf", DoubleType, false),
+      Field("right", BooleanType, false)
+    )
+  )
+
+  val nestedSchema = Schema(
+    Seq(
+      Field("rates", DoubleType, false, Some(10), Some(6)),
+      Field("base", StringType, false),
+      Field("date", StringType, false),
+      Field("time_last_updated", DoubleType, false, Some(10), Some(0))
+    )
+  )
+
   //serpents.zipWithIndex.foreach(t => vectorizeSerpent(t._2, t._1, data))
   val data: VectorSchemaRoot =
     VectorSchemaRoot.create(schema, new RootAllocator())
   initData(data)
-  val df = ArrowDataFrame(data, index)
+  val df: ArrowDataFrame = ArrowDataFrame(data, index)
 
-  val dfNoIndex = ArrowDataFrame(data, ArraySeq.empty[String])
+  val dfNoIndex: ArrowDataFrame = ArrowDataFrame(data, ArraySeq.empty[String])
 
   val serpentsNoIndex = List(
     Serpent("0", 1, 2),

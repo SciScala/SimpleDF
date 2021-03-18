@@ -28,6 +28,16 @@ object LongType extends dtype {
   }
 }
 
+object DoubleType extends dtype {
+  val alias: String = "double"
+  def matchType[Double](value: Any): Either[Error, Double] = {
+    value match {
+      case x: Double @unchecked => Right(x)
+      case _ => Left(TypeDoesNotMatchError(s"$value is not of type $alias"))
+    }
+  }
+}
+
 object StringType extends dtype {
   val alias: String = "string"
   def matchType[String](value: Any): Either[Error, String] = {

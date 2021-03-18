@@ -1,0 +1,5 @@
+[
+  {"omg": "123", "wtf": 12, "right": true},
+  {"omg": "245", "wtf": 15, "right": false},
+  {"omg": "678", "wtf": 10, "right": false}
+]
