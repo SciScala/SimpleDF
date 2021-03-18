@@ -17,6 +17,7 @@ private[arrayseq] object Json2ArraySeqDataFrame {
     val src: mutable.Iterable[((String, Value), Int)] = obj.zipWithIndex
     val indexCol: Option[(String, Value)] =
       obj.find(t => t._2.getClass.getName == "ujson.Obj")
+    println(indexCol)
 
     def fillData(
         cell: ((String, Value), Int)
@@ -56,7 +57,7 @@ private[arrayseq] object Json2ArraySeqDataFrame {
       }
       case Some((key, value)) => {
         val cols: ArraySeq[String] =
-          ArraySeq.from(src.map(_._1._1).filter(_ != key))
+          ArraySeq.from(src.map(_._1._1).dropRight(1))
         val lm = value.value
           .asInstanceOf[MLinkedHashMap[String, ujson.Value.Value]]
         val index = ArraySeq.from(lm.keySet)

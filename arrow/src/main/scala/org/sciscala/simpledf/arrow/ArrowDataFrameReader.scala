@@ -28,7 +28,7 @@ object ArrowDataFrameReader {
           case LongType =>
             new FieldType(false, new ArrowType.Int(64, true), null)
           case DoubleType =>
-            new FieldType(false, new ArrowType.Decimal(5, 2), null)
+            new FieldType(false, new ArrowType.Decimal(f.floatingPointPrecision.getOrElse(5), f.floatingPointScale.getOrElse(2)), null)
           case BooleanType => new FieldType(false, new ArrowType.Bool(), null)
           case StringType  => new FieldType(false, new ArrowType.Utf8(), null)
         }

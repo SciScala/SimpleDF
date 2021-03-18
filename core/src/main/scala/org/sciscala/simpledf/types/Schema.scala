@@ -3,7 +3,7 @@ package org.sciscala.simpledf.types
 import org.sciscala.simpledf.types.dtype
 import org.sciscala.simpledf.error._
 
-case class Field(name: String, dtype: dtype, nullable: Boolean) 
+case class Field(name: String, dtype: dtype, nullable: Boolean, floatingPointPrecision: Option[Int] = None, floatingPointScale: Option[Int] = None)
 
 case class Schema(fields: Seq[Field]) {
 

@@ -164,6 +164,15 @@ object utils {
     )
   )
 
+  val nestedSchema = Schema(
+    Seq(
+      Field("rates", DoubleType, false, Some(10), Some(6)),
+      Field("base", StringType, false),
+      Field("date", StringType, false),
+      Field("time_last_updated", DoubleType, false, Some(10), Some(0))
+    )
+  )
+
   //serpents.zipWithIndex.foreach(t => vectorizeSerpent(t._2, t._1, data))
   val data: VectorSchemaRoot =
     VectorSchemaRoot.create(schema, new RootAllocator())
