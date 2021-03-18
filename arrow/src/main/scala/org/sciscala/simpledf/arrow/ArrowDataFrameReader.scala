@@ -14,6 +14,7 @@ import java.nio.file.Path
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, Map}
+import scala.io.{BufferedSource, Source}
 import scala.jdk.CollectionConverters._
 
 object ArrowDataFrameReader {
@@ -39,8 +40,20 @@ object ArrowDataFrameReader {
 
   implicit val arrowDataFrameReader: DataFrameReader[ArrowDataFrame] =
     new DataFrameReader[ArrowDataFrame] {
+      private def readFile(filepath: Path): BufferedSource =
+        Source.fromFile(filepath.toFile)
 
-      override def readJson(filepath: Path, schema: Option[Schema]): ArrowDataFrame = ???
+      private def readFileLines(filepath: Path): Iterator[String] =
+        readFile(filepath).getLines()
+
+      private def readFileString(filepath: Path, headers: Boolean): String = {
+        if (headers) readFileLines(filepath).toList.tail.mkString
+        else readFile(filepath).mkString
+      }
+      override def readJson(filepath: Path, schema: Option[Schema]): ArrowDataFrame = schema match {
+        case Some(sc) => Json2ArrowDataFrame.processJsonString(readFileString(filepath, false), sc)
+        case None => ArrowDataFrame.emptyInstance
+      }
 
       override def readJson(jsonString: String, schema: Option[Schema]): ArrowDataFrame = schema match {
         case Some(sc) => Json2ArrowDataFrame.processJsonString(jsonString, sc)
